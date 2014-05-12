@@ -1,0 +1,8 @@
+inc/
+bin/
+src/ipch/
+src/Debug/
+src/UpgradeLog.htm
+src/*.opensdf
+src/*.sdf
+src/*.v11.suo
