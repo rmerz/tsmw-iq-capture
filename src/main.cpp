@@ -33,6 +33,36 @@
 #include <iomanip>
 #include <fstream>
 
+void
+printLastError (int ErrorCode, std::ofstream* OutLog)
+{
+  char *pErrorText;
+
+  // Use TSMWGetLastError_c to get error message and error code
+  pErrorText = TSMWGetLastError_c ( &ErrorCode );
+  std::cout << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+  *OutLog   << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+}
+
+void
+releaseK1Interface (std::ofstream* OutLog)
+{
+  int ErrorCode;
+  char *pErrorText;
+
+  // Release interface (which closes connection to TSMW)
+  ErrorCode = TSMWReleaseInterface_c ();
+  if ( ErrorCode == 0){
+    std::cout << "Released\n";
+    *OutLog   << "Released\n";
+  } else {
+    // Use TSMWGetLastError_c to get error message and error code
+    pErrorText = TSMWGetLastError_c ( &ErrorCode );
+    std::cout << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+    *OutLog   << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+  }
+}
+
 int main()
 {
   std::ofstream* OutLog = new std::ofstream("log.txt", std::ios::out); // logfile
@@ -300,41 +330,19 @@ int main()
 
 
         } else {
-          // Use TSMWGetLastError_c to get error message and error code
-          pErrorText = TSMWGetLastError_c ( &ErrorCode );
-          std::cout << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-          *OutLog   << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+          printLastError (ErrorCode,OutLog);
         }
       } else {
-        // Use TSMWGetLastError_c to get error message and error code
-        pErrorText = TSMWGetLastError_c ( &ErrorCode );
-        std::cout << "TSMWIQStream_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-        *OutLog   << "TSMWIQStream_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+        printLastError (ErrorCode,OutLog);
       }
     } else {
-      // Use TSMWGetLastError_c to get error message and error code
-      pErrorText = TSMWGetLastError_c ( &ErrorCode );
-      std::cout << "TSMWIQSetup_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-      *OutLog   << "TSMWIQSetup_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+      printLastError (ErrorCode,OutLog);
     }
   } else {
-    // Use TSMWGetLastError_c to get error message and error code
-    pErrorText = TSMWGetLastError_c ( &ErrorCode );
-    std::cout << "TSMWConnect_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-    *OutLog   << "TSMWConnect_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+    printLastError (ErrorCode,OutLog);
   }
 
-  // Release interface (which closes connection to TSMW)
-  ErrorCode = TSMWReleaseInterface_c ();
-  if ( ErrorCode == 0){
-    std::cout << "Released\n";
-    *OutLog   << "Released\n";
-  } else {
-    // Use TSMWGetLastError_c to get error message and error code
-    pErrorText = TSMWGetLastError_c ( &ErrorCode );
-    std::cout << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-    *OutLog   << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-  }
+  releaseK1Interface (OutLog);
 
   // while (_kbhit()) {
   //   char ch = _getch();
