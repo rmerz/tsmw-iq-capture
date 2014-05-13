@@ -74,9 +74,7 @@ int main()
   bool FileOutputFlag = true; // flag to indicate whether first
                               // errorblock shall be written into file
                               // or not
-
   int ErrorCode;
-  char *pErrorText;
 
   char IPAddress[] = "192.168.0.2";
   TSMW_IQIF_MODE_t TSMWMode;
@@ -86,13 +84,15 @@ int main()
   TSMWMode.Mode = 0;                    // standard mode  (has to be zero)
   unsigned short TSMWID;
 
-  char *pFileName = NULL;          // if NULL then online streaming mode
+  char *pFileName = NULL; // if NULL then online streaming mode
   char *pDescription = NULL;
+  //char *pFileName = "data.dat"; // if NULL then online streaming mode
+  //char *pDescription = "Test file";
   unsigned int CreateIfExists = 1; // Only necessary for streaming to file
 
   TSMW_IQIF_MEAS_CTRL_t MeasCtrl;
   MeasCtrl.NoOfSamples = 1; // Number of IQ samples to measure
-  MeasCtrl.FilterType = 1;  // Use userdefined filters
+  MeasCtrl.FilterType = 0;  // Use userdefined filters (0 corresponds to pre-defined filters)
   MeasCtrl.FilterID = 1;    // Number of the filter that shall be used
   MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit
   MeasCtrl.AttStrategy = 0; // Attenuation strategy, currently unused, shall be set to zero
@@ -104,7 +104,7 @@ int main()
 
   TSMW_IQIF_CH_CTRL_t ChannelCtrl1;
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl1 = &ChannelCtrl1;
-  ChannelCtrl1.Frequency = (unsigned __int64)1.0e9; // Center frequency in Hz
+  ChannelCtrl1.Frequency = (unsigned __int64)1.8385e9; // Center frequency in Hz
   ChannelCtrl1.UseOtherFrontend = 0; // Reserved for future use, has to be zero
   ChannelCtrl1.NoOfChannels = 1;     // Number of channels that shall be used (1..4)
   ChannelCtrl1.Attenuation = 0;      // Attenuation to use (0..15dB)
@@ -155,29 +155,18 @@ int main()
   unsigned int TimeOut = 10000; // in ms
 
   unsigned __int64 Offset = 0;
-  unsigned int NoOfBlockSamples = 1e5; // Block size for processing
-
-  double Threshold = 0.05; // Normalized difference between successive
-                           // I/Q samples in order to detect an error
-                           // (an abrupt change in I or Q component)
+  unsigned int NoOfBlockSamples = (unsigned int)20e6; // Block size for processing: a too large value will cause a segfault
 
   // Find out how many (sub-) channels are measured
   unsigned int NoOfChannels;
-  unsigned int ChFe1, ChFe2;
   if (pChannelCtrl1 == NULL) {
     // Frontend 2 used only
-    ChFe2 = pChannelCtrl2->NoOfChannels;
-    ChFe1 = 0;
     NoOfChannels = pChannelCtrl2->NoOfChannels;
   } else if (pChannelCtrl2 == NULL) {
     // Frontend 1 used only
-    ChFe1 = pChannelCtrl1->NoOfChannels;
-    ChFe2 = 0;
     NoOfChannels = pChannelCtrl1->NoOfChannels;
   } else {
     // Both frontends used
-    ChFe1 = pChannelCtrl1->NoOfChannels;
-    ChFe2 = pChannelCtrl2->NoOfChannels;
     NoOfChannels = pChannelCtrl1->NoOfChannels + pChannelCtrl2->NoOfChannels;
   }
   std::cout << "Total number of channels: " << NoOfChannels << "\n";
@@ -202,7 +191,7 @@ int main()
   double* pImag;
   pImag = (double*) malloc (NoOfChannels * NoOfBlockSamples * sizeof(double));
 
-  bool ErrorFlag = false; // Indicates whether error spurs occured or not
+  std::cout << "Number of samples per block: " << NoOfBlockSamples << "\n";
 
   // Initialize TSMW IQ Interface
   loadK1Interface (OutLog);
@@ -217,7 +206,7 @@ int main()
     // Wait two seconds after connection establishment for frontend synchronization.
     std::cout << "Wait 5 seconds for frontend synchronization\n";
     *OutLog   << "Wait 5 seconds for frontend synchronization\n";
-    Sleep (5e3);
+    Sleep (5000);
     // clock_t trigger, seconds = 2;
     // trigger = seconds * CLOCKS_PER_SEC + clock();
     // while (trigger > clock());
@@ -239,90 +228,50 @@ int main()
         *OutLog   << "Streaming started\n";
         std::cout << "Press any key to interrupt\n";
 
-        // Open output log file
-        std::ofstream* OutBlock = new std::ofstream("ErrorBlock.dat", std::ios::out);
+	if (pFileName == NULL) {
+	  // Open output log file
+	  std::ofstream* OutBlock = new std::ofstream("iq_blocks.dat", std::ios::out);
+	  // Continuously get and process streaming data until key pressed
+	  unsigned int CntBlock = 0;
+	  do {
 
-        // Continuously get and process streaming data until key pressed
-        unsigned int CntBlock = 0;
-        do {
+	    // Get streaming data, wait for a stream data block up to
+	    // TimeOut seconds This function will always deliver the
+	    // next NoOfBlockSamples I/Q samples (for
+	    // online-processing)
+	    ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
+						 pReal, pImag, pScaling, pOverFlow, pCalibrated, Offset, NoOfBlockSamples, NoOfChannels);
+	    if (ErrorCode == 0) {
+	      std::cout << "Block " << CntBlock << " received\n";
 
-          // Get streaming data, wait for a stream data block up to
-          // TimeOut seconds This function will always deliver the
-          // next NoOfBlockSamples I/Q samples (for
-          // online-processing)
-          ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
-                                               pReal, pImag, pScaling, pOverFlow, pCalibrated, Offset, NoOfBlockSamples, NoOfChannels);
-          if (ErrorCode == 0) {
-            std::cout << "Block " << CntBlock << " received\n";
-
-            // Look for abrupt changes in I or Q component to find gaps
-            // Do that for each sub-channel
-            for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
-              int d = CntChannel*NoOfBlockSamples; // Sample offset between two successive channels
-              double MaxValue = pReal[ 0 + d ]; // Set to first sample of current block
-              double MinValue = pReal[ 0 + d ]; // Set to first sample of current block
-              double MaxDiff = 0;
-              double RelDiff = 0;
-              unsigned int MaxDiffIndex = 0;
-
-              for (unsigned int CntSample = 1; CntSample < NoOfBlockSamples; CntSample++ ) {
-                if (pReal[ CntSample + d ] > MaxValue) // New maximum
-                  MaxValue = pReal[ CntSample + d ];
-                if (pReal[ CntSample + d ] < MinValue) // New minimum
-                  MinValue = pReal[ CntSample + d ];
-
-                double Diff = pReal[ CntSample + d ] - pReal[ CntSample + d - 1];
-                if (Diff > MaxDiff) { // New highest difference
-                  MaxDiff = Diff;
-                  MaxDiffIndex = CntSample - 1;
-                }
-              }
-              RelDiff = MaxDiff / (MaxValue - MinValue); // Scaling to 1 as highest difference
-              if (RelDiff > Threshold) {
-                ErrorFlag = true; // Errors occured
-                unsigned int frontend, channel;
-                if (CntChannel+1 > ChFe1) {
-                  // Channel belongs to frontend 2
-                  frontend = 2;
-                  channel = CntChannel+1 - ChFe1;
-                } else {
-                  // Channel belongs to frontend 1
-                  frontend = 1;
-                  channel = CntChannel+1;
-                }
-                std::cout << "Error in Block: " << CntBlock << " Frontend: " << frontend << " Channel: " << channel << " Sample: " << MaxDiffIndex << " Diff: " << RelDiff << std::endl;
-
-                *OutLog  << "Error in Block: " << CntBlock << "     Frontend: " << frontend << "     Channel: " << channel << "     Sample: " << std::setw(7) << MaxDiffIndex << "     Diff: " << std::setw(8) << std::setprecision(6) << RelDiff << std::endl;
-                if (FileOutputFlag == true) {
-                  *OutBlock << "Error in Block: " << CntBlock << "     Frontend: " << frontend << "     Channel: " << channel << "     Sample: " << MaxDiffIndex << "     Diff: " << RelDiff <<std::endl;
-                  for (unsigned int CntSample = 0; CntSample < NoOfBlockSamples; CntSample++ ) {
-                    *OutBlock << std::setw(15) << std::setprecision(15) << pReal[ CntSample + d ] << std::endl;
-                  }
-                  FileOutputFlag = false;
-                }
-              }
-            }
-          } else {
-            // Use TSMWGetLastError_c to get error message and error code
-            pErrorText = TSMWGetLastError_c ( &ErrorCode );
-            std::cout << "TSMWIQGetStreamDouble_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-            *OutLog   << "TSMWIQGetStreamDouble_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-          }
-          CntBlock = CntBlock + 1;
-          if (_kbhit()) {
-            *OutLog   << "Number of blocks: " << CntBlock << std::endl;
-          }
-        } while (!_kbhit());
-
-
-        if (ErrorFlag == false) {
-          *OutLog  << "No errors\n";
-          *OutBlock << "No errors\n";
-        } else {
-          *OutLog  << "Errors occured\n";
-        }
-
-        delete OutBlock;
+	      // Display (or copy to file) samples for each sub-channel
+	      for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
+		int d = CntChannel*NoOfBlockSamples; // Sample offset between two successive channels
+		//std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << std::setw(15) << std::setprecision(15) << pReal[d] << "\n";
+		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << pReal[d] << "" << pImag[d] << "\n";
+		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << pScaling[CntChannel] << "\n";
+		// for (unsigned int CntSample = 1; CntSample < NoOfBlockSamples; CntSample++ ) {
+		// 	// pReal[ CntSample + d ];
+		// 	// pImag[ CntSample + d ];
+		// 	for (unsigned int CntSample = 0; CntSample < NoOfBlockSamples; CntSample++ ) {
+		// 	  //*OutBlock << CntChannel << " " << std::setw(15) << std::setprecision(15) << pReal[ CntSample + d ] << std::endl;
+		// 	  std::cout << CntChannel << " " << std::setw(15) << std::setprecision(15) << pReal[ CntSample + d ] << std::endl;
+		// 	}
+		// }
+	      }
+	    } else {
+	      printLastError (ErrorCode,OutLog);
+	    }
+	    CntBlock = CntBlock + 1;
+	    if (_kbhit()) {
+	      *OutLog   << "Number of blocks: " << CntBlock << std::endl;
+	    }
+	  } while (!_kbhit());
+	  delete OutBlock;
+	} else {
+	  // Loop as long as no keyboard key is hit
+	  while (!_kbhit());
+	}
 
         // Stop streaming
         ErrorCode = TSMWIQStopStreaming_c ( TSMWID, (unsigned char)StreamCtrl.StreamID, &StreamStatus);
