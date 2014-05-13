@@ -171,171 +171,172 @@ int main()
   if (ErrorCode == 0) {
     std::cout << "Initialized\n";
     *OutLog   << "Initialized\n";
-
-    // Connect to TSMW
-    ErrorCode = TSMWConnect_c (IPAddress, &TSMWMode, &TSMWID);
-    if (ErrorCode == 0) {
-
-      std::cout << "Connected\n";
-      *OutLog   << "Connected\n";
-
-      // Wait two seconds after connection establishment for frontend synchronization.
-      clock_t trigger, seconds = 2;
-      trigger = seconds * CLOCKS_PER_SEC + clock();
-      while (trigger > clock());
-
-      // Send user-specific resampling filter to TSMW
-      ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
-      if (ErrorCode == 0) {
-        std::cout << "Filter set\n";
-        *OutLog   << "Filter set\n";
-
-        // Start streaming with predefined measurement and streaming
-        // parameters Passing a NULL vector for pChannelCtrl1 or
-        // pChannelCtrl2 means that frontend 1 or frontend 2,
-        // respectively shall NOT be used for streamimg.
-        ErrorCode = TSMWIQStream_c (TSMWID, &MeasCtrl, pChannelCtrl1, pChannelCtrl2, &StreamCtrl,
-                                    pFileName, pDescription, CreateIfExists);
-        if (ErrorCode == 0){
-          std::cout << "Streaming started\n";
-          *OutLog   << "Streaming started\n";
-          std::cout << "Press any key to interrupt\n";
-
-          // Open output log file
-          std::ofstream* OutBlock = new std::ofstream("ErrorBlock.dat", std::ios::out);
-
-          // Continuously get and process streaming data until key pressed
-          unsigned int CntBlock = 0;
-          do {
-
-            // Get streaming data, wait for a stream data block up to
-            // TimeOut seconds This function will always deliver the
-            // next NoOfBlockSamples I/Q samples (for
-            // online-processing)
-            ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
-                                                  pReal, pImag, pScaling, pOverFlow, pCalibrated, Offset, NoOfBlockSamples, NoOfChannels);
-            if (ErrorCode == 0) {
-              std::cout << "Block " << CntBlock << " received\n";
-
-              // Look for abrupt changes in I or Q component to find gaps
-              // Do that for each sub-channel
-              for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
-                int d = CntChannel*NoOfBlockSamples; // Sample offset between two successive channels
-                double MaxValue = pReal[ 0 + d ]; // Set to first sample of current block
-                double MinValue = pReal[ 0 + d ]; // Set to first sample of current block
-                double MaxDiff = 0;
-                double RelDiff = 0;
-                unsigned int MaxDiffIndex = 0;
-
-                for (unsigned int CntSample = 1; CntSample < NoOfBlockSamples; CntSample++ ) {
-                  if (pReal[ CntSample + d ] > MaxValue) // New maximum
-                    MaxValue = pReal[ CntSample + d ];
-                  if (pReal[ CntSample + d ] < MinValue) // New minimum
-                    MinValue = pReal[ CntSample + d ];
-
-                  double Diff = pReal[ CntSample + d ] - pReal[ CntSample + d - 1];
-                  if (Diff > MaxDiff) { // New highest difference
-                    MaxDiff = Diff;
-                    MaxDiffIndex = CntSample - 1;
-                  }
-                }
-                RelDiff = MaxDiff / (MaxValue - MinValue); // Scaling to 1 as highest difference
-                if (RelDiff > Threshold) {
-                  ErrorFlag = true; // Errors occured
-                  unsigned int frontend, channel;
-                  if (CntChannel+1 > ChFe1) {
-                    // Channel belongs to frontend 2
-                    frontend = 2;
-                    channel = CntChannel+1 - ChFe1;
-                  } else {
-                    // Channel belongs to frontend 1
-                    frontend = 1;
-                    channel = CntChannel+1;
-                  }
-                  std::cout << "Error in Block: " << CntBlock << " Frontend: " << frontend << " Channel: " << channel << " Sample: " << MaxDiffIndex << " Diff: " << RelDiff << std::endl;
-
-                  *OutLog  << "Error in Block: " << CntBlock << "     Frontend: " << frontend << "     Channel: " << channel << "     Sample: " << std::setw(7) << MaxDiffIndex << "     Diff: " << std::setw(8) << std::setprecision(6) << RelDiff << std::endl;
-                  if (FileOutputFlag == true) {
-                    *OutBlock << "Error in Block: " << CntBlock << "     Frontend: " << frontend << "     Channel: " << channel << "     Sample: " << MaxDiffIndex << "     Diff: " << RelDiff <<std::endl;
-                    for (unsigned int CntSample = 0; CntSample < NoOfBlockSamples; CntSample++ ) {
-                      *OutBlock << std::setw(15) << std::setprecision(15) << pReal[ CntSample + d ] << std::endl;
-                    }
-                    FileOutputFlag = false;
-                  }
-                }
-              }
-            } else {
-              // Use TSMWGetLastError_c to get error message and error code
-              pErrorText = TSMWGetLastError_c ( &ErrorCode );
-              std::cout << "TSMWIQGetStreamDouble_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-              *OutLog   << "TSMWIQGetStreamDouble_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-            }
-            CntBlock = CntBlock + 1;
-            if (_kbhit()) {
-              *OutLog   << "Number of blocks: " << CntBlock << std::endl;
-            }
-          } while (!_kbhit());
-
-
-          if (ErrorFlag == false) {
-            *OutLog  << "No errors\n";
-            *OutBlock << "No errors\n";
-          } else {
-            *OutLog  << "Errors occured\n";
-          }
-
-          delete OutBlock;
-
-          // Stop streaming
-          ErrorCode = TSMWIQStopStreaming_c ( TSMWID, (unsigned char)StreamCtrl.StreamID, &StreamStatus);
-          if ( ErrorCode == 0 ){
-            std::cout << "Streaming stopped\n";
-            *OutLog   << "Streaming stopped\n";
-
-
-          } else {
-            // Use TSMWGetLastError_c to get error message and error code
-            pErrorText = TSMWGetLastError_c ( &ErrorCode );
-            std::cout << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-            *OutLog   << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-          }
-        } else {
-          // Use TSMWGetLastError_c to get error message and error code
-          pErrorText = TSMWGetLastError_c ( &ErrorCode );
-          std::cout << "TSMWIQStream_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-          *OutLog   << "TSMWIQStream_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-        }
-      } else {
-        // Use TSMWGetLastError_c to get error message and error code
-        pErrorText = TSMWGetLastError_c ( &ErrorCode );
-        std::cout << "TSMWIQSetup_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-        *OutLog   << "TSMWIQSetup_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-      }
-    } else {
-      // Use TSMWGetLastError_c to get error message and error code
-      pErrorText = TSMWGetLastError_c ( &ErrorCode );
-      std::cout << "TSMWConnect_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-      *OutLog   << "TSMWConnect_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-    }
-
-    // Release interface (which closes connection to TSMW)
-    ErrorCode = TSMWReleaseInterface_c ();
-    if ( ErrorCode == 0){
-      std::cout << "Released\n";
-      *OutLog   << "Released\n";
-
-    } else {
-      // Use TSMWGetLastError_c to get error message and error code
-      pErrorText = TSMWGetLastError_c ( &ErrorCode );
-      std::cout << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-      *OutLog   << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-    }
   } else {
     // Use TSMWGetLastError_c to get error message and error code
     pErrorText = TSMWGetLastError_c ( &ErrorCode );
     std::cout << "TSMWInitInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
     *OutLog   << "TSMWInitInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
   }
+
+  // Connect to TSMW
+  ErrorCode = TSMWConnect_c (IPAddress, &TSMWMode, &TSMWID);
+  if (ErrorCode == 0) {
+
+    std::cout << "Connected\n";
+    *OutLog   << "Connected\n";
+
+    // Wait two seconds after connection establishment for frontend synchronization.
+    clock_t trigger, seconds = 2;
+    trigger = seconds * CLOCKS_PER_SEC + clock();
+    while (trigger > clock());
+
+    // Send user-specific resampling filter to TSMW
+    ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
+    if (ErrorCode == 0) {
+      std::cout << "Filter set\n";
+      *OutLog   << "Filter set\n";
+
+      // Start streaming with predefined measurement and streaming
+      // parameters Passing a NULL vector for pChannelCtrl1 or
+      // pChannelCtrl2 means that frontend 1 or frontend 2,
+      // respectively shall NOT be used for streamimg.
+      ErrorCode = TSMWIQStream_c (TSMWID, &MeasCtrl, pChannelCtrl1, pChannelCtrl2, &StreamCtrl,
+                                  pFileName, pDescription, CreateIfExists);
+      if (ErrorCode == 0){
+        std::cout << "Streaming started\n";
+        *OutLog   << "Streaming started\n";
+        std::cout << "Press any key to interrupt\n";
+
+        // Open output log file
+        std::ofstream* OutBlock = new std::ofstream("ErrorBlock.dat", std::ios::out);
+
+        // Continuously get and process streaming data until key pressed
+        unsigned int CntBlock = 0;
+        do {
+
+          // Get streaming data, wait for a stream data block up to
+          // TimeOut seconds This function will always deliver the
+          // next NoOfBlockSamples I/Q samples (for
+          // online-processing)
+          ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
+                                               pReal, pImag, pScaling, pOverFlow, pCalibrated, Offset, NoOfBlockSamples, NoOfChannels);
+          if (ErrorCode == 0) {
+            std::cout << "Block " << CntBlock << " received\n";
+
+            // Look for abrupt changes in I or Q component to find gaps
+            // Do that for each sub-channel
+            for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
+              int d = CntChannel*NoOfBlockSamples; // Sample offset between two successive channels
+              double MaxValue = pReal[ 0 + d ]; // Set to first sample of current block
+              double MinValue = pReal[ 0 + d ]; // Set to first sample of current block
+              double MaxDiff = 0;
+              double RelDiff = 0;
+              unsigned int MaxDiffIndex = 0;
+
+              for (unsigned int CntSample = 1; CntSample < NoOfBlockSamples; CntSample++ ) {
+                if (pReal[ CntSample + d ] > MaxValue) // New maximum
+                  MaxValue = pReal[ CntSample + d ];
+                if (pReal[ CntSample + d ] < MinValue) // New minimum
+                  MinValue = pReal[ CntSample + d ];
+
+                double Diff = pReal[ CntSample + d ] - pReal[ CntSample + d - 1];
+                if (Diff > MaxDiff) { // New highest difference
+                  MaxDiff = Diff;
+                  MaxDiffIndex = CntSample - 1;
+                }
+              }
+              RelDiff = MaxDiff / (MaxValue - MinValue); // Scaling to 1 as highest difference
+              if (RelDiff > Threshold) {
+                ErrorFlag = true; // Errors occured
+                unsigned int frontend, channel;
+                if (CntChannel+1 > ChFe1) {
+                  // Channel belongs to frontend 2
+                  frontend = 2;
+                  channel = CntChannel+1 - ChFe1;
+                } else {
+                  // Channel belongs to frontend 1
+                  frontend = 1;
+                  channel = CntChannel+1;
+                }
+                std::cout << "Error in Block: " << CntBlock << " Frontend: " << frontend << " Channel: " << channel << " Sample: " << MaxDiffIndex << " Diff: " << RelDiff << std::endl;
+
+                *OutLog  << "Error in Block: " << CntBlock << "     Frontend: " << frontend << "     Channel: " << channel << "     Sample: " << std::setw(7) << MaxDiffIndex << "     Diff: " << std::setw(8) << std::setprecision(6) << RelDiff << std::endl;
+                if (FileOutputFlag == true) {
+                  *OutBlock << "Error in Block: " << CntBlock << "     Frontend: " << frontend << "     Channel: " << channel << "     Sample: " << MaxDiffIndex << "     Diff: " << RelDiff <<std::endl;
+                  for (unsigned int CntSample = 0; CntSample < NoOfBlockSamples; CntSample++ ) {
+                    *OutBlock << std::setw(15) << std::setprecision(15) << pReal[ CntSample + d ] << std::endl;
+                  }
+                  FileOutputFlag = false;
+                }
+              }
+            }
+          } else {
+            // Use TSMWGetLastError_c to get error message and error code
+            pErrorText = TSMWGetLastError_c ( &ErrorCode );
+            std::cout << "TSMWIQGetStreamDouble_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+            *OutLog   << "TSMWIQGetStreamDouble_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+          }
+          CntBlock = CntBlock + 1;
+          if (_kbhit()) {
+            *OutLog   << "Number of blocks: " << CntBlock << std::endl;
+          }
+        } while (!_kbhit());
+
+
+        if (ErrorFlag == false) {
+          *OutLog  << "No errors\n";
+          *OutBlock << "No errors\n";
+        } else {
+          *OutLog  << "Errors occured\n";
+        }
+
+        delete OutBlock;
+
+        // Stop streaming
+        ErrorCode = TSMWIQStopStreaming_c ( TSMWID, (unsigned char)StreamCtrl.StreamID, &StreamStatus);
+        if ( ErrorCode == 0 ){
+          std::cout << "Streaming stopped\n";
+          *OutLog   << "Streaming stopped\n";
+
+
+        } else {
+          // Use TSMWGetLastError_c to get error message and error code
+          pErrorText = TSMWGetLastError_c ( &ErrorCode );
+          std::cout << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+          *OutLog   << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+        }
+      } else {
+        // Use TSMWGetLastError_c to get error message and error code
+        pErrorText = TSMWGetLastError_c ( &ErrorCode );
+        std::cout << "TSMWIQStream_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+        *OutLog   << "TSMWIQStream_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+      }
+    } else {
+      // Use TSMWGetLastError_c to get error message and error code
+      pErrorText = TSMWGetLastError_c ( &ErrorCode );
+      std::cout << "TSMWIQSetup_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+      *OutLog   << "TSMWIQSetup_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+    }
+  } else {
+    // Use TSMWGetLastError_c to get error message and error code
+    pErrorText = TSMWGetLastError_c ( &ErrorCode );
+    std::cout << "TSMWConnect_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+    *OutLog   << "TSMWConnect_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+  }
+
+  // Release interface (which closes connection to TSMW)
+  ErrorCode = TSMWReleaseInterface_c ();
+  if ( ErrorCode == 0){
+    std::cout << "Released\n";
+    *OutLog   << "Released\n";
+
+  } else {
+    // Use TSMWGetLastError_c to get error message and error code
+    pErrorText = TSMWGetLastError_c ( &ErrorCode );
+    std::cout << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+    *OutLog   << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+  }
+  
 
   while (_kbhit()) {
     char ch = _getch();
@@ -344,5 +345,5 @@ int main()
   while(!_kbhit());
 
   delete OutLog;
-  return(0);
+  return (0);
 }
