@@ -328,8 +328,6 @@ int main()
         if ( ErrorCode == 0 ){
           std::cout << "Streaming stopped\n";
           *OutLog   << "Streaming stopped\n";
-
-
         } else {
           printLastError (ErrorCode,OutLog);
         }
