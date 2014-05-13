@@ -3,6 +3,8 @@ bin/
 src/ipch/
 src/Debug/
 src/UpgradeLog.htm
+src/UpgradeLog.XML
+src/_UpgradeReport_Files
 src/*.opensdf
 src/*.sdf
 src/*.v11.suo
