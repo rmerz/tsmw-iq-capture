@@ -336,13 +336,12 @@ int main()
     std::cout << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
     *OutLog   << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
   }
-  
 
-  while (_kbhit()) {
-    char ch = _getch();
-  }
-  std::cout << "Press any key to quit program\n";
-  while(!_kbhit());
+  // while (_kbhit()) {
+  //   char ch = _getch();
+  // }
+  // std::cout << "Press any key to quit program\n";
+  // while(!_kbhit());
 
   delete OutLog;
   return (0);
