@@ -240,7 +240,7 @@ int main()
                   }
                 }
                 RelDiff = MaxDiff / (MaxValue - MinValue); // Scaling to 1 as highest difference
-                if (RelDiff > Threashold) {
+                if (RelDiff > Threshold) {
                   ErrorFlag = true; // Errors occured
                   unsigned int frontend, channel;
                   if (CntChannel+1 > ChFe1) {
