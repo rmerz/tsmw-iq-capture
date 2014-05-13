@@ -45,10 +45,23 @@ printLastError (int ErrorCode, std::ofstream* OutLog)
 }
 
 void
+loadK1Interface (std::ofstream* OutLog)
+{
+  int ErrorCode;
+
+  ErrorCode = TSMWInitInterface_c ();
+  if (ErrorCode == 0) {
+    std::cout << "Initialized\n";
+    *OutLog   << "Initialized\n";
+  } else {
+    printLastError (ErrorCode,OutLog);
+  }
+}
+
+void
 releaseK1Interface (std::ofstream* OutLog)
 {
   int ErrorCode;
-  char *pErrorText;
 
   // Release interface (which closes connection to TSMW)
   ErrorCode = TSMWReleaseInterface_c ();
@@ -56,10 +69,7 @@ releaseK1Interface (std::ofstream* OutLog)
     std::cout << "Released\n";
     *OutLog   << "Released\n";
   } else {
-    // Use TSMWGetLastError_c to get error message and error code
-    pErrorText = TSMWGetLastError_c ( &ErrorCode );
-    std::cout << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-    *OutLog   << "TSMWReleaseInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
+    printLastError (ErrorCode,OutLog);
   }
 }
 
@@ -197,16 +207,7 @@ int main()
   bool ErrorFlag = false; // Indicates whether error spurs occured or not
 
   // Initialize TSMW IQ Interface
-  ErrorCode = TSMWInitInterface_c ();
-  if (ErrorCode == 0) {
-    std::cout << "Initialized\n";
-    *OutLog   << "Initialized\n";
-  } else {
-    // Use TSMWGetLastError_c to get error message and error code
-    pErrorText = TSMWGetLastError_c ( &ErrorCode );
-    std::cout << "TSMWInitInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-    *OutLog   << "TSMWInitInterface_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-  }
+  loadK1Interface (OutLog);
 
   // Connect to TSMW
   ErrorCode = TSMWConnect_c (IPAddress, &TSMWMode, &TSMWID);
