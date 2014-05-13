@@ -96,7 +96,9 @@ int main()
   MeasCtrl.FilterID = 1;    // Number of the filter that shall be used
   MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit
   MeasCtrl.AttStrategy = 0; // Attenuation strategy, currently unused, shall be set to zero
-  MeasCtrl.Splitter = 1;    // 0: Disable splitter
+  MeasCtrl.Splitter = 1;    // 0: Disable splitter (splits the signal
+			    // from frontend 1 after the preselector
+			    // to both frontends)
   MeasCtrl.Priority = 15;   // Relative priority, Valid range: 0 .. 15, 15 highest
 
 
@@ -104,7 +106,7 @@ int main()
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl1 = &ChannelCtrl1;
   ChannelCtrl1.Frequency = (unsigned __int64)1.0e9; // Center frequency in Hz
   ChannelCtrl1.UseOtherFrontend = 0; // Reserved for future use, has to be zero
-  ChannelCtrl1.NoOfChannels = 2;     // Number of channels that shall be used (1..4)
+  ChannelCtrl1.NoOfChannels = 1;     // Number of channels that shall be used (1..4)
   ChannelCtrl1.Attenuation = 0;      // Attenuation to use (0..15dB)
   ChannelCtrl1.Preamp = 1;           // 1: Enable
   ChannelCtrl1.CalibInput = 0;       // 0: Disable
@@ -126,7 +128,7 @@ int main()
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl2 = &ChannelCtrl2;
   ChannelCtrl2.Frequency = (unsigned __int64)1.0e9;
   ChannelCtrl2.UseOtherFrontend = 0;
-  ChannelCtrl2.NoOfChannels = 3;
+  ChannelCtrl2.NoOfChannels = 1;
   ChannelCtrl2.Attenuation = 0;
   ChannelCtrl2.Preamp = 1;
   ChannelCtrl2.CalibInput = 0;
@@ -153,7 +155,7 @@ int main()
   unsigned int TimeOut = 10000; // in ms
 
   unsigned __int64 Offset = 0;
-  unsigned int NoOfBlockSamples = 100000; // Block size for processing
+  unsigned int NoOfBlockSamples = 1e5; // Block size for processing
 
   double Threshold = 0.05; // Normalized difference between successive
                            // I/Q samples in order to detect an error
@@ -178,6 +180,7 @@ int main()
     ChFe2 = pChannelCtrl2->NoOfChannels;
     NoOfChannels = pChannelCtrl1->NoOfChannels + pChannelCtrl2->NoOfChannels;
   }
+  std::cout << "Total number of channels: " << NoOfChannels << "\n";
 
   TSMW_IQIF_STREAM_STATUS_t StreamStatus;
   TSMW_IQIF_RESULT_t IQResult;
