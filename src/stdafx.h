@@ -5,6 +5,11 @@
 
 #pragma once
 
+#include <windows.h>
+#include <conio.h>
+#include <time.h>
+#include <iomanip>
+#include <fstream>
 
 #include <iostream>
 #include <tchar.h>

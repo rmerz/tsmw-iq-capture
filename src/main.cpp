@@ -26,12 +26,7 @@
 // Include filter specification for 1MHz sampling rate
 #include "Filter_1MHz.h"
 
-
-#include <conio.h>
-#include <time.h>
-#include <iostream>
-#include <iomanip>
-#include <fstream>
+#include "stdafx.h"
 
 void
 printLastError (int ErrorCode, std::ofstream* OutLog)
@@ -217,9 +212,12 @@ int main()
     *OutLog   << "Connected\n";
 
     // Wait two seconds after connection establishment for frontend synchronization.
-    clock_t trigger, seconds = 2;
-    trigger = seconds * CLOCKS_PER_SEC + clock();
-    while (trigger > clock());
+    std::cout << "Wait 5 seconds for frontend synchronization\n";
+    *OutLog   << "Wait 5 seconds for frontend synchronization\n";
+    Sleep (5e3);
+    // clock_t trigger, seconds = 2;
+    // trigger = seconds * CLOCKS_PER_SEC + clock();
+    // while (trigger > clock());
 
     // Send user-specific resampling filter to TSMW
     ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
