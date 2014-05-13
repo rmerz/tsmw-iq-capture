@@ -329,7 +329,6 @@ int main()
   if ( ErrorCode == 0){
     std::cout << "Released\n";
     *OutLog   << "Released\n";
-
   } else {
     // Use TSMWGetLastError_c to get error message and error code
     pErrorText = TSMWGetLastError_c ( &ErrorCode );
