@@ -92,11 +92,11 @@ int main()
 
   TSMW_IQIF_MEAS_CTRL_t MeasCtrl;
   MeasCtrl.NoOfSamples = 1; // Number of IQ samples to measure
-  MeasCtrl.FilterType = 0;  // Use userdefined filters (0 corresponds to pre-defined filters)
+  MeasCtrl.FilterType = 1;  // Use userdefined filters (0 corresponds to pre-defined filters)
   MeasCtrl.FilterID = 1;    // Number of the filter that shall be used
   MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit
   MeasCtrl.AttStrategy = 0; // Attenuation strategy, currently unused, shall be set to zero
-  MeasCtrl.Splitter = 1;    // 0: Disable splitter (splits the signal
+  MeasCtrl.Splitter = 0;    // 0: Disable splitter (splits the signal
 			    // from frontend 1 after the preselector
 			    // to both frontends)
   MeasCtrl.Priority = 15;   // Relative priority, Valid range: 0 .. 15, 15 highest
@@ -104,7 +104,7 @@ int main()
 
   TSMW_IQIF_CH_CTRL_t ChannelCtrl1;
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl1 = &ChannelCtrl1;
-  ChannelCtrl1.Frequency = (unsigned __int64)1.8385e9; // Center frequency in Hz
+  ChannelCtrl1.Frequency = (unsigned __int64)1.0e9; // Center frequency in Hz
   ChannelCtrl1.UseOtherFrontend = 0; // Reserved for future use, has to be zero
   ChannelCtrl1.NoOfChannels = 1;     // Number of channels that shall be used (1..4)
   ChannelCtrl1.Attenuation = 0;      // Attenuation to use (0..15dB)
@@ -150,12 +150,12 @@ int main()
                                      // recommended
   StreamCtrl.MaxStreamSize = 4000;   // Maximum streaming size in MBytes.
 
-  // pChannelCtrl2 = NULL;                           // uncomment this line for use of frontend 1 only
+  pChannelCtrl2 = NULL;                           // uncomment this line for use of frontend 1 only
 
   unsigned int TimeOut = 10000; // in ms
 
   unsigned __int64 Offset = 0;
-  unsigned int NoOfBlockSamples = (unsigned int)20e6; // Block size for processing: a too large value will cause a segfault
+  unsigned int NoOfBlockSamples = (unsigned int)1e6; // Block size for processing: a too large value will cause a segfault
 
   // Find out how many (sub-) channels are measured
   unsigned int NoOfChannels;
@@ -206,10 +206,10 @@ int main()
     // Wait two seconds after connection establishment for frontend synchronization.
     std::cout << "Wait 5 seconds for frontend synchronization\n";
     *OutLog   << "Wait 5 seconds for frontend synchronization\n";
-    Sleep (5000);
-    // clock_t trigger, seconds = 2;
-    // trigger = seconds * CLOCKS_PER_SEC + clock();
-    // while (trigger > clock());
+    //Sleep (5000);
+    clock_t trigger, seconds = 2;
+    trigger = seconds * CLOCKS_PER_SEC + clock();
+    while (trigger > clock());
 
     // Send user-specific resampling filter to TSMW
     ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
@@ -230,7 +230,7 @@ int main()
 
 	if (pFileName == NULL) {
 	  // Open output log file
-	  std::ofstream* OutBlock = new std::ofstream("iq_blocks.dat", std::ios::out);
+	  //std::ofstream* OutBlock = new std::ofstream("iq_blocks.dat", std::ios::out);
 	  // Continuously get and process streaming data until key pressed
 	  unsigned int CntBlock = 0;
 	  do {
@@ -267,7 +267,7 @@ int main()
 	      *OutLog   << "Number of blocks: " << CntBlock << std::endl;
 	    }
 	  } while (!_kbhit());
-	  delete OutBlock;
+	  // delete OutBlock;
 	} else {
 	  // Loop as long as no keyboard key is hit
 	  while (!_kbhit());
