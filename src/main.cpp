@@ -264,7 +264,7 @@ int main()
 
 		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << scaling_lin_mV << " " << real_scaled << " " << imag_scaled << std::endl;
 
-		iq_power = 10*log10(pow(real_scaled,2) + pow(imag_scaled,2));
+		iq_power = 10*log10((pow(real_scaled,2) + pow(imag_scaled,2))/2);
 		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << iq_power << " dBm" << std::endl;
 
 		if (pOverFlow[CntChannel] > 0)
