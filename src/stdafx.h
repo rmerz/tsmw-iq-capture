@@ -10,6 +10,7 @@
 #include <time.h>
 #include <iomanip>
 #include <fstream>
+#include <math.h>
 
 #include <iostream>
 #include <tchar.h>
