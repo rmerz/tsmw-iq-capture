@@ -84,6 +84,8 @@ int main()
   TSMWMode.Mode = 0;                    // standard mode  (has to be zero)
   unsigned short TSMWID;
 
+  std::cout << "Preselectors: " << TSMWMode.AMPS_CH1 << " " << TSMWMode.AMPS_CH2 << "\n";
+
   char *pFileName = NULL; // if NULL then online streaming mode
   char *pDescription = NULL;
   //char *pFileName = "data.dat"; // if NULL then online streaming mode
@@ -94,7 +96,7 @@ int main()
   MeasCtrl.NoOfSamples = 1; // Number of IQ samples to measure
   MeasCtrl.FilterType = 1;  // Use userdefined filters (0 corresponds to pre-defined filters)
   MeasCtrl.FilterID = 1;    // Number of the filter that shall be used
-  MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit
+  MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit / 2 is 12 Bit
   MeasCtrl.AttStrategy = 0; // Attenuation strategy, currently unused, shall be set to zero
   MeasCtrl.Splitter = 0;    // 0: Disable splitter (splits the signal
 			    // from frontend 1 after the preselector
@@ -104,7 +106,7 @@ int main()
 
   TSMW_IQIF_CH_CTRL_t ChannelCtrl1;
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl1 = &ChannelCtrl1;
-  ChannelCtrl1.Frequency = (unsigned __int64)1.0e9; // Center frequency in Hz
+  ChannelCtrl1.Frequency = (unsigned __int64)1.8385e9; // Center frequency in Hz
   ChannelCtrl1.UseOtherFrontend = 0; // Reserved for future use, has to be zero
   ChannelCtrl1.NoOfChannels = 1;     // Number of channels that shall be used (1..4)
   ChannelCtrl1.Attenuation = 0;      // Attenuation to use (0..15dB)
@@ -122,7 +124,7 @@ int main()
   ChannelCtrl1.ChannelDelay[3] = 0;
   ChannelCtrl1.BlockSize = 0;      // Reserved: must be set to 0
   ChannelCtrl1.BlockSkip = 0;      // Reserved
-
+  ChannelCtrl1.DigIqOnOff = 0;
 
   TSMW_IQIF_CH_CTRL_t ChannelCtrl2;
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl2 = &ChannelCtrl2;
@@ -142,6 +144,7 @@ int main()
   ChannelCtrl2.ChannelDelay[3] = 0;
   ChannelCtrl2.BlockSize = 0; // Reserved
   ChannelCtrl2.BlockSkip = 0; // Reserved
+  ChannelCtrl2.DigIqOnOff = 0;
 
   TSMW_IQIF_STREAM_CTRL_t StreamCtrl;
   StreamCtrl.StreamID = 0;           // Stream ID, valid range: 0..15
@@ -216,7 +219,6 @@ int main()
     if (ErrorCode == 0) {
       std::cout << "Filter set\n";
       *OutLog   << "Filter set\n";
-
       // Start streaming with predefined measurement and streaming
       // parameters Passing a NULL vector for pChannelCtrl1 or
       // pChannelCtrl2 means that frontend 1 or frontend 2,
@@ -233,6 +235,10 @@ int main()
 	  //std::ofstream* OutBlock = new std::ofstream("iq_blocks.dat", std::ios::out);
 	  // Continuously get and process streaming data until key pressed
 	  unsigned int CntBlock = 0;
+	  double iq_power = 0;
+	  double scaling_lin_mV = 0;
+	  double real_scaled = 0;
+	  double imag_scaled = 0;
 	  do {
 
 	    // Get streaming data, wait for a stream data block up to
@@ -245,11 +251,25 @@ int main()
 	      std::cout << "Block " << CntBlock << " received\n";
 
 	      // Display (or copy to file) samples for each sub-channel
+
 	      for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
 		int d = CntChannel*NoOfBlockSamples; // Sample offset between two successive channels
-		//std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << std::setw(15) << std::setprecision(15) << pReal[d] << "\n";
-		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << pReal[d] << "" << pImag[d] << "\n";
-		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << pScaling[CntChannel] << "\n";
+
+		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << pScaling[CntChannel] << " " << pReal[0] << " " << pImag[0] << std::endl;
+
+		// See TSMWIQPlotData.m: 2000 is for 100 * 20
+		scaling_lin_mV = pow(10,pScaling[CntChannel]/100/20);
+		real_scaled = pReal[0]*scaling_lin_mV;
+		imag_scaled = pImag[0]*scaling_lin_mV;
+
+		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << scaling_lin_mV << " " << real_scaled << " " << imag_scaled << std::endl;
+
+		iq_power = 10*log10(pow(real_scaled,2) + pow(imag_scaled,2));
+		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << iq_power << " dBm" << std::endl;
+
+		if (pOverFlow[CntChannel] > 0)
+		  std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
+
 		// for (unsigned int CntSample = 1; CntSample < NoOfBlockSamples; CntSample++ ) {
 		// 	// pReal[ CntSample + d ];
 		// 	// pImag[ CntSample + d ];
