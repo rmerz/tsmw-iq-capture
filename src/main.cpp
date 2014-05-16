@@ -239,8 +239,8 @@ int main()
 	  double scaling_lin_mV = 0;
 	  double real_scaled = 0;
 	  double imag_scaled = 0;
+	  unsigned int channel_offset = 0;
 	  do {
-
 	    // Get streaming data, wait for a stream data block up to
 	    // TimeOut seconds This function will always deliver the
 	    // next NoOfBlockSamples I/Q samples (for
@@ -255,17 +255,18 @@ int main()
 	      // Display (or copy to file) samples for each sub-channel
 
 	      for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
-		int d = CntChannel*NoOfBlockSamples; // Sample offset between two successive channels
-
+		// Sample offset between two successive channels
+		channel_offset = CntChannel*NoOfBlockSamples;
+		std::cout << channel_offset << std::endl;
 		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
 			  << " (first sample scaling,real,imag): "
-			  << pScaling[CntChannel] << " " << pReal[0] << " " << pImag[0]
+			  << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
 			  << std::endl;
 
 		// See TSMWIQPlotData.m: 2000 is for 100 * 20
 		scaling_lin_mV = pow(10,pScaling[CntChannel]/100/20);
-		real_scaled = pReal[0]*scaling_lin_mV;
-		imag_scaled = pImag[0]*scaling_lin_mV;
+		real_scaled = pReal[channel_offset]*scaling_lin_mV;
+		imag_scaled = pImag[channel_offset]*scaling_lin_mV;
 		// std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << scaling_lin_mV << " " << real_scaled << " " << imag_scaled << std::endl;
 		iq_power = 10*log10((pow(real_scaled,2) + pow(imag_scaled,2))/2);
 		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
