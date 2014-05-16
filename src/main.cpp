@@ -68,6 +68,33 @@ releaseK1Interface (std::ofstream* OutLog)
   }
 }
 
+double
+get_iq_power (short scaling, double real, double imag)
+{
+  double scaling_lin_mV;
+
+  // See TSMWIQPlotData.m: 2000 is for 100 * 20
+  scaling_lin_mV = pow(10,scaling/100/20);
+  return 10*log10((pow(real*scaling_lin_mV,2) + pow(imag*scaling_lin_mV,2))/2);
+  //return 10*log10((pow(real*scaling_lin_mV,2) + pow(imag*scaling_lin_mV,2))/(100));
+}
+
+double
+get_average_iq_power (short scaling, double* real, double* imag,
+		      unsigned int NoOfBlockSamples)
+{
+  double scaling_lin_mV;
+  double power_sum = 0;
+
+  scaling_lin_mV = pow(10,scaling/100/20);
+  for (unsigned int CntSample = 0; CntSample < NoOfBlockSamples; CntSample++ ) {
+    power_sum = power_sum +
+      pow(real[CntSample]*scaling_lin_mV,2) +
+      pow(imag[CntSample]*scaling_lin_mV,2);
+  }
+  return 10*log10(power_sum/(2*NoOfBlockSamples));
+}
+
 int main()
 {
   std::ofstream* OutLog = new std::ofstream("log.txt", std::ios::out); // logfile
@@ -106,11 +133,11 @@ int main()
 
   TSMW_IQIF_CH_CTRL_t ChannelCtrl1;
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl1 = &ChannelCtrl1;
-  ChannelCtrl1.Frequency = (unsigned __int64)1.8385e9; // Center frequency in Hz
+  ChannelCtrl1.Frequency = (unsigned __int64)1.0e9; // Center frequency in Hz
   ChannelCtrl1.UseOtherFrontend = 0; // Reserved for future use, has to be zero
   ChannelCtrl1.NoOfChannels = 1;     // Number of channels that shall be used (1..4)
   ChannelCtrl1.Attenuation = 0;      // Attenuation to use (0..15dB)
-  ChannelCtrl1.Preamp = 1;           // 1: Enable
+  ChannelCtrl1.Preamp = 0;           // 1: Enable
   ChannelCtrl1.CalibInput = 0;       // 0: Disable
   ChannelCtrl1.FreqShift[0] = 0;     // Frequency shift from center frequency in Hz for each subchannel
   ChannelCtrl1.FreqShift[1] = 0;
@@ -132,7 +159,7 @@ int main()
   ChannelCtrl2.UseOtherFrontend = 0;
   ChannelCtrl2.NoOfChannels = 1;
   ChannelCtrl2.Attenuation = 0;
-  ChannelCtrl2.Preamp = 1;
+  ChannelCtrl2.Preamp = 0;
   ChannelCtrl2.CalibInput = 0;
   ChannelCtrl2.FreqShift[0] = 0;
   ChannelCtrl2.FreqShift[1] = 0;
@@ -152,13 +179,15 @@ int main()
                                      // MBytes, a minimum of 200MB is
                                      // recommended
   StreamCtrl.MaxStreamSize = 4000;   // Maximum streaming size in MBytes.
-
-  pChannelCtrl2 = NULL;                           // uncomment this line for use of frontend 1 only
+ 
+  // Uncomment this line for use of frontend 1 only
+  pChannelCtrl2 = NULL;
 
   unsigned int TimeOut = 10000; // in ms
 
   unsigned __int64 Offset = 0;
-  unsigned int NoOfBlockSamples = (unsigned int)1e6; // Block size for processing: a too large value will cause a segfault
+ // Block size for processing: a too large value will cause a segfault
+  unsigned int NoOfBlockSamples = (unsigned int)2e6;
 
   // Find out how many (sub-) channels are measured
   unsigned int NoOfChannels;
@@ -236,9 +265,7 @@ int main()
 	  // Continuously get and process streaming data until key pressed
 	  unsigned int CntBlock = 0;
 	  double iq_power = 0;
-	  double scaling_lin_mV = 0;
-	  double real_scaled = 0;
-	  double imag_scaled = 0;
+	  double iq_average_power = 0;
 	  unsigned int channel_offset = 0;
 	  do {
 	    // Get streaming data, wait for a stream data block up to
@@ -263,12 +290,7 @@ int main()
 			  << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
 			  << std::endl;
 
-		// See TSMWIQPlotData.m: 2000 is for 100 * 20
-		scaling_lin_mV = pow(10,pScaling[CntChannel]/100/20);
-		real_scaled = pReal[channel_offset]*scaling_lin_mV;
-		imag_scaled = pImag[channel_offset]*scaling_lin_mV;
-		// std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << scaling_lin_mV << " " << real_scaled << " " << imag_scaled << std::endl;
-		iq_power = 10*log10((pow(real_scaled,2) + pow(imag_scaled,2))/2);
+		iq_power = get_iq_power (pScaling[CntChannel],pReal[channel_offset],pImag[channel_offset]);
 		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
 			  << " (first sample IQ power): "
 			  << iq_power << " dBm" << std::endl;
@@ -276,14 +298,11 @@ int main()
 		if (pOverFlow[CntChannel] > 0)
 		  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
 
-		// for (unsigned int CntSample = 1; CntSample < NoOfBlockSamples; CntSample++ ) {
-		// 	// pReal[ CntSample + d ];
-		// 	// pImag[ CntSample + d ];
-		// 	for (unsigned int CntSample = 0; CntSample < NoOfBlockSamples; CntSample++ ) {
-		// 	  //*OutBlock << CntChannel << " " << std::setw(15) << std::setprecision(15) << pReal[ CntSample + d ] << std::endl;
-		// 	  std::cout << CntChannel << " " << std::setw(15) << std::setprecision(15) << pReal[ CntSample + d ] << std::endl;
-		// 	}
-		// }
+		// Average power over all samples
+		iq_average_power = get_average_iq_power (pScaling[CntChannel],&pReal[channel_offset],&pReal[channel_offset],NoOfBlockSamples);
+		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+			  << " (avg. IQ power): "
+			  << iq_average_power << " dBm" << std::endl;
 	      }
 	    } else {
 	      printLastError (ErrorCode,OutLog);
