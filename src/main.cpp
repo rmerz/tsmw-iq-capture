@@ -257,8 +257,8 @@ int main()
 	      for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
 		int d = CntChannel*NoOfBlockSamples; // Sample offset between two successive channels
 
-		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels
-			  << ", first sample (scaling,real,imag): "
+		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+			  << " (first sample scaling,real,imag): "
 			  << pScaling[CntChannel] << " " << pReal[0] << " " << pImag[0]
 			  << std::endl;
 
@@ -268,12 +268,12 @@ int main()
 		imag_scaled = pImag[0]*scaling_lin_mV;
 		// std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << scaling_lin_mV << " " << real_scaled << " " << imag_scaled << std::endl;
 		iq_power = 10*log10((pow(real_scaled,2) + pow(imag_scaled,2))/2);
-		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels
+		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
 			  << " (first sample IQ power): "
 			  << iq_power << " dBm" << std::endl;
 
 		if (pOverFlow[CntChannel] > 0)
-		  std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
+		  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
 
 		// for (unsigned int CntSample = 1; CntSample < NoOfBlockSamples; CntSample++ ) {
 		// 	// pReal[ CntSample + d ];
