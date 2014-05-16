@@ -246,7 +246,9 @@ int main()
 	    // next NoOfBlockSamples I/Q samples (for
 	    // online-processing)
 	    ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
-						 pReal, pImag, pScaling, pOverFlow, pCalibrated, Offset, NoOfBlockSamples, NoOfChannels);
+						 pReal, pImag, pScaling, pOverFlow,
+						 pCalibrated, Offset,
+						 NoOfBlockSamples, NoOfChannels);
 	    if (ErrorCode == 0) {
 	      std::cout << "Block " << CntBlock << " received\n";
 
@@ -255,17 +257,20 @@ int main()
 	      for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
 		int d = CntChannel*NoOfBlockSamples; // Sample offset between two successive channels
 
-		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << pScaling[CntChannel] << " " << pReal[0] << " " << pImag[0] << std::endl;
+		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels
+			  << ", first sample (scaling,real,imag): "
+			  << pScaling[CntChannel] << " " << pReal[0] << " " << pImag[0]
+			  << std::endl;
 
 		// See TSMWIQPlotData.m: 2000 is for 100 * 20
 		scaling_lin_mV = pow(10,pScaling[CntChannel]/100/20);
 		real_scaled = pReal[0]*scaling_lin_mV;
 		imag_scaled = pImag[0]*scaling_lin_mV;
-
-		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << scaling_lin_mV << " " << real_scaled << " " << imag_scaled << std::endl;
-
+		// std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << scaling_lin_mV << " " << real_scaled << " " << imag_scaled << std::endl;
 		iq_power = 10*log10((pow(real_scaled,2) + pow(imag_scaled,2))/2);
-		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << iq_power << " dBm" << std::endl;
+		std::cout << "Channel: " << CntChannel << " / " << NoOfChannels
+			  << " (first sample IQ power): "
+			  << iq_power << " dBm" << std::endl;
 
 		if (pOverFlow[CntChannel] > 0)
 		  std::cout << "Channel: " << CntChannel << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
