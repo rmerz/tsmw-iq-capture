@@ -6,7 +6,8 @@
  *
  * @copyright    (c) 2014 Swisscom AG, Bern, Schweiz
  *               (c) 2008 Rohde & Schwarz GmbH & Co. KG, Munich
- * @author       Markus Herdin, Johannes Dommel, Hubert Willmann
+ * @author       Ruben Merz
+ *               Markus Herdin, Johannes Dommel, Hubert Willmann
  * @version
  *    May 2014
  *
