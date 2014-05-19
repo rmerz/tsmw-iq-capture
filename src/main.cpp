@@ -34,13 +34,13 @@ private:
 
 public:
   CaptureOptions (void) : fileOutputFlag (false),
-			  pFilename (NULL),
-			  pDescription (NULL),
-			  f1 (1000000000),
-			  f2 (0),
-			  splitter (0),
-			  block_length (1000000)
-			  
+                          pFilename (NULL),
+                          pDescription (NULL),
+                          f1 (1000000000),
+                          f2 (0),
+                          splitter (0),
+                          block_length (1000000)
+                          
   {}
 
   void parseCmd (int, char **);
@@ -78,17 +78,17 @@ CaptureOptions::parseCmd (int argc, char *argv[])
 
   for (int count = 1; count < argc; count++) {
     // std::cout << "  argv[" << count << "]   "
-    // 	      << argv[count] << "\n";
+    //        << argv[count] << "\n";
     valid = false;
     if (help.compare (argv[count]) == 0 || short_help.compare (argv[count]) == 0) {
       std::cout << "-f\t\tWrite IQ stream to file\n"
-		<< "--filename [string]\tSpecify file name to write IQ samples (default is iq_data.dat)\n"
-		<< "--description [string]\tSpecify description to attach with IQ samples capture (default is n/a)\n"
-		<< "--fe1_freq [double]\tFrequency of frontend 1 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 1 (default is 1e9)\n"
-		<< "--fe2_freq [double]\tFrequency of frontend 2 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 2 (default is 0 e.g inactive)\n"
-		<< "--splitter\tActivate splitter from FE1 to FE2 (default is inactive)\n"
-		<< "--block_length\tSize in bits of the measurement blocks (default is 1e6)\n"
-		<< "--help|-h\tPrints this help message\n" << std::endl;
+                << "--filename [string]\tSpecify file name to write IQ samples (default is iq_data.dat)\n"
+                << "--description [string]\tSpecify description to attach with IQ samples capture (default is n/a)\n"
+                << "--fe1_freq [double]\tFrequency of frontend 1 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 1 (default is 1e9)\n"
+                << "--fe2_freq [double]\tFrequency of frontend 2 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 2 (default is 0 e.g inactive)\n"
+                << "--splitter\tActivate splitter from FE1 to FE2 (default is inactive)\n"
+                << "--block_length\tSize in bits of the measurement blocks (default is 1e6)\n"
+                << "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
     }
     if (to_file.compare (argv[count]) == 0) {
@@ -151,7 +151,7 @@ public:
 
   double get_iq_power (short scaling, double, double);
   double get_average_iq_power (short, double*, double*,
-			       unsigned int);
+                               unsigned int);
 };
 
 void
@@ -207,7 +207,7 @@ Util::get_iq_power (short scaling, double real, double imag)
 
 double
 Util::get_average_iq_power (short scaling, double* real, double* imag,
-			    unsigned int NoOfBlockSamples)
+                            unsigned int NoOfBlockSamples)
 {
   double scaling_lin_mV;
   double power_sum = 0;
@@ -252,9 +252,9 @@ main (int argc, char *argv[], char *envp[])
   MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit / 2 is 12 Bit
   MeasCtrl.AttStrategy = 0; // Attenuation strategy, currently unused, shall be set to zero
   MeasCtrl.Splitter = options.splitter; // 0: Disable splitter (splits
-					// the signal from frontend 1
-					// after the preselector to
-					// both frontends)
+                                        // the signal from frontend 1
+                                        // after the preselector to
+                                        // both frontends)
   MeasCtrl.Priority = 15;   // Relative priority, Valid range: 0 .. 15, 15 highest
 
 
@@ -395,67 +395,67 @@ main (int argc, char *argv[], char *envp[])
         *OutLog   << "Streaming started\n";
         std::cout << "Press any key to interrupt\n";
 
-	if (options.pFilename == NULL) {
-	  // Continuously get and process streaming data until key pressed
-	  unsigned int CntBlock = 0;
-	  double iq_power = 0;
-	  double iq_average_power = 0;
-	  unsigned int channel_offset = 0;
-	  do {
-	    // Get streaming data, wait for a stream data block up to
-	    // TimeOut seconds This function will always deliver the
-	    // next NoOfBlockSamples I/Q samples (for
-	    // online-processing)
-	    ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
-						 pReal, pImag, pScaling, pOverFlow,
-						 pCalibrated, Offset,
-						 NoOfBlockSamples, NoOfChannels);
-	    if (ErrorCode == 0) {
-	      std::cout << "Block " << CntBlock << " received\n";
+        if (options.pFilename == NULL) {
+          // Continuously get and process streaming data until key pressed
+          unsigned int CntBlock = 0;
+          double iq_power = 0;
+          double iq_average_power = 0;
+          unsigned int channel_offset = 0;
+          do {
+            // Get streaming data, wait for a stream data block up to
+            // TimeOut seconds This function will always deliver the
+            // next NoOfBlockSamples I/Q samples (for
+            // online-processing)
+            ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
+                                                 pReal, pImag, pScaling, pOverFlow,
+                                                 pCalibrated, Offset,
+                                                 NoOfBlockSamples, NoOfChannels);
+            if (ErrorCode == 0) {
+              std::cout << "Block " << CntBlock << " received\n";
 
-	      // Display samples for each sub-channel
+              // Display samples for each sub-channel
 
-	      for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
-		// Sample offset between two successive channels
-		channel_offset = CntChannel*NoOfBlockSamples;
-		std::cout << "Debug: " << channel_offset << std::endl;
-		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
-			  << " (first sample scaling,real,imag): "
-			  << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
-			  << std::endl;
+              for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
+                // Sample offset between two successive channels
+                channel_offset = CntChannel*NoOfBlockSamples;
+                std::cout << "Debug: " << channel_offset << std::endl;
+                std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+                          << " (first sample scaling,real,imag): "
+                          << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
+                          << std::endl;
 
-		iq_power = util.get_iq_power (pScaling[CntChannel],
+                iq_power = util.get_iq_power (pScaling[CntChannel],
                                               pReal[channel_offset],
                                               pImag[channel_offset]);
-		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
-			  << " (first sample IQ power): "
-			  << iq_power << " dBm" << std::endl;
+                std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+                          << " (first sample IQ power): "
+                          << iq_power << " dBm" << std::endl;
 
-		if (pOverFlow[CntChannel] > 0)
-		  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
+                if (pOverFlow[CntChannel] > 0)
+                  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
 
-		// Average power over all samples
-		iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
+                // Average power over all samples
+                iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
                                                               &pReal[channel_offset],
                                                               &pImag[channel_offset],
                                                               NoOfBlockSamples);
-		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
-			  << " (avg. IQ power): "
-			  << iq_average_power << " dBm" << std::endl;
-	      }
-	    } else {
-	      util.printLastError (ErrorCode,OutLog);
-	    }
-	    CntBlock = CntBlock + 1;
-	    if (_kbhit()) {
-	      *OutLog   << "Number of blocks: " << CntBlock << std::endl;
-	    }
-	  } while (!_kbhit());
-	  // delete OutBlock;
-	} else {
-	  // Loop as long as no keyboard key is hit
-	  while (!_kbhit());
-	}
+                std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+                          << " (avg. IQ power): "
+                          << iq_average_power << " dBm" << std::endl;
+              }
+            } else {
+              util.printLastError (ErrorCode,OutLog);
+            }
+            CntBlock = CntBlock + 1;
+            if (_kbhit()) {
+              *OutLog   << "Number of blocks: " << CntBlock << std::endl;
+            }
+          } while (!_kbhit());
+          // delete OutBlock;
+        } else {
+          // Loop as long as no keyboard key is hit
+          while (!_kbhit());
+        }
 
         // Stop streaming
         ErrorCode = TSMWIQStopStreaming_c ( TSMWID, (unsigned char)StreamCtrl.StreamID, &StreamStatus);
