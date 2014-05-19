@@ -424,7 +424,9 @@ main (int argc, char *argv[], char *envp[])
 			  << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
 			  << std::endl;
 
-		iq_power = util.get_iq_power (pScaling[CntChannel],pReal[channel_offset],pImag[channel_offset]);
+		iq_power = util.get_iq_power (pScaling[CntChannel],
+                                              pReal[channel_offset],
+                                              pImag[channel_offset]);
 		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
 			  << " (first sample IQ power): "
 			  << iq_power << " dBm" << std::endl;
@@ -433,7 +435,10 @@ main (int argc, char *argv[], char *envp[])
 		  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
 
 		// Average power over all samples
-		iq_average_power = util.get_average_iq_power (pScaling[CntChannel],&pReal[channel_offset],&pImag[channel_offset],NoOfBlockSamples);
+		iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
+                                                              &pReal[channel_offset],
+                                                              &pImag[channel_offset],
+                                                              NoOfBlockSamples);
 		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
 			  << " (avg. IQ power): "
 			  << iq_average_power << " dBm" << std::endl;
