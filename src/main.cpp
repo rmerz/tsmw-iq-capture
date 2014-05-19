@@ -38,7 +38,8 @@ public:
 			  pDescription (NULL),
 			  f1 (1000000000),
 			  f2 (0),
-			  splitter (0)
+			  splitter (0),
+			  block_length (1000000)
 			  
   {}
 
@@ -50,8 +51,9 @@ public:
 
   (unsigned __int64) f1;
   (unsigned __int64) f2;
-
   unsigned int splitter;
+
+  (unsigned int) block_length;
 };
 
 void
@@ -70,6 +72,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string fe_splitter ("--splitter");
   std::string fe1_freq ("--fe1_freq");
   std::string fe2_freq ("--fe2_freq");
+  std::string block_length_opt ("--block_length");
   std::string help ("--help");
   std::string short_help ("-h");
 
@@ -84,6 +87,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
 		<< "--fe1_freq [double]\tFrequency of frontend 1 in Hz (default is 1e9)\n"
 		<< "--fe2_freq [double]\tFrequency of frontend 2 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 2 (default is 0 e.g inactive)\n"
 		<< "--splitter\tActivate splitter from FE1 to FE2 (default is inactive)\n"
+		<< "--block_length\tSize in bits of the measurement blocks (default is 1e6)\n"
 		<< "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
     }
@@ -122,6 +126,12 @@ CaptureOptions::parseCmd (int argc, char *argv[])
       assert (argc >= count+1);
       count++;
       f2 = (unsigned __int64)atof (argv[count]);
+      valid = true;
+    }
+    if (block_length_opt.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      block_length = (unsigned int)atof (argv[count]);
       valid = true;
     }
     if (valid == false) {
@@ -306,7 +316,7 @@ main (int argc, char *argv[], char *envp[])
 
   unsigned __int64 Offset = 0;
  // Block size for processing: a too large value will cause a segfault
-  unsigned int NoOfBlockSamples = (unsigned int)2e6;
+  unsigned int NoOfBlockSamples = options.block_length;
 
   // Find out how many (sub-) channels are measured
   unsigned int NoOfChannels;
@@ -395,12 +405,12 @@ main (int argc, char *argv[], char *envp[])
 	    if (ErrorCode == 0) {
 	      std::cout << "Block " << CntBlock << " received\n";
 
-	      // Display (or copy to file) samples for each sub-channel
+	      // Display samples for each sub-channel
 
 	      for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
 		// Sample offset between two successive channels
 		channel_offset = CntChannel*NoOfBlockSamples;
-		std::cout << channel_offset << std::endl;
+		std::cout << "Debug: " << channel_offset << std::endl;
 		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
 			  << " (first sample scaling,real,imag): "
 			  << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
