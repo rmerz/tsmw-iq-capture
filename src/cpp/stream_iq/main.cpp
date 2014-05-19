@@ -218,7 +218,7 @@ Util::get_average_iq_power (short scaling, double* real, double* imag,
 int
 main (int argc, char *argv[], char *envp[])
 {
- // Logfile
+  // Logfile
   std::ofstream* OutLog = new std::ofstream("log.txt", std::ios::out);
 
   int ErrorCode;
