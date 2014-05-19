@@ -1,22 +1,14 @@
 /**
- * TSMW Project   TSMW Streaming Demo with online processing
+ * TSMW Project  TSMW IQ sample capture tool
  *
  * @file         main.cpp
- * @abstract     This demo application demonstrates seamless streaming. It starts a I/Q stream measurement
- *               and processes the I/Q data online in order to find gaps in the I/Q stream (which should never occur).
- *               In order to do that it is assumed that a CW signal of approximately -40dBm at 1.000001GHz is fed
- *               into the TSMW. When measuring at 1GHz, the resulting I and Q components will show a sinusiodal
- *               variation but no abrupt changes. This allows for detecting gaps in the I/Q stream be looking
- *               for abrupt changes of the I or Q component.
+ * @abstract     TBD
  *
- *               This demo application now procecces the streamed I/Q data in order to find such gaps and produces
- *               an error output if in a processed I/Q block a gap is detected. If no input signal is present, only
- *               noise is measured, which produces one error output per processed data block.
- *
- * @copyright     (c) 2008 Rohde & Schwarz GmbH & Co. KG, Munich
- * @author        Markus Herdin, Johannes Dommel, Hubert Willmann
+ * @copyright    (c) 2014 Swisscom AG, Bern, Schweiz
+ *               (c) 2008 Rohde & Schwarz GmbH & Co. KG, Munich
+ * @author       Markus Herdin, Johannes Dommel, Hubert Willmann
  * @version
- *    20.10.2008
+ *    May 2014
  *
  */
 
