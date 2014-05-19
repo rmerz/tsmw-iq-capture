@@ -28,6 +28,98 @@
 
 #include "stdafx.h"
 
+class CaptureOptions
+{
+private:
+
+public:
+  CaptureOptions (void) : fileOutputFlag (false),
+			  pFilename (NULL),
+			  pDescription (NULL),
+			  f1 (1000000000),
+			  f2 (0),
+			  splitter (0)
+			  
+  {}
+
+  void parseCmd (int, char **);
+
+  bool fileOutputFlag;
+  char* pFilename;
+  char* pDescription;
+
+  (unsigned __int64) f1;
+  (unsigned __int64) f2;
+
+  unsigned int splitter;
+};
+
+void
+CaptureOptions::parseCmd (int argc, char *argv[])
+{
+  // Display each command-line argument
+  if (argc > 1)
+    std::cout << "Parse command-line" << std::endl;
+  else
+    return;
+
+  std::string to_file ("-f");
+  std::string iq_filename ("--filename");
+  std::string iq_filename_description ("--description");
+  std::string fe_splitter ("--splitter");
+  std::string fe1_freq ("--fe1_freq");
+  std::string fe2_freq ("--fe2_freq");
+  std::string help ("--help");
+  std::string short_help ("-h");
+
+  for (int count = 1; count < argc; count++) {
+    // std::cout << "  argv[" << count << "]   "
+    // 	      << argv[count] << "\n";
+    if (help.compare (argv[count]) == 0 || short_help.compare (argv[count]) == 0) {
+      std::cout << "-f\t\tWrite IQ stream to file\n"
+		<< "--filename [string]\tSpecify file name to write IQ samples (default is iq_data.dat)\n"
+		<< "--description [string]\tSpecify description to attach with IQ samples capture (default is n/a)\n"
+		<< "--fe1_freq [double]\tFrequency of frontend 1 in Hz (default is 1e9)\n"
+		<< "--fe2_freq [double]\tFrequency of frontend 2 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 2 (default is 0 e.g inactive)\n"
+		<< "--splitter\tActivate splitter from FE1 to FE2 (default is inactive)\n"
+		<< "--help|-h\tPrints this help message\n" << std::endl;
+      exit (0);
+    }
+    if (to_file.compare (argv[count]) == 0) {
+      fileOutputFlag = true;
+      pFilename = (char*) malloc (256*sizeof(char));
+      sprintf_s (pFilename, 256, "iq_data.dat");
+      pDescription = (char*) malloc (1024*sizeof(char));
+      sprintf_s (pDescription, 1024, "n/a");
+    }
+    // fileOutputFlag needs to be activated first
+    if (fileOutputFlag == true && iq_filename.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      sprintf_s (pFilename, 256, argv[count]);
+    }
+    if (fileOutputFlag == true && iq_filename_description.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      sprintf_s (pDescription, 1024, argv[count]);
+    }
+    if (fe_splitter.compare (argv[count]) == 0) {
+      splitter = 1;
+    }
+    if (fe1_freq.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      f1 = (unsigned __int64)atof (argv[count]);
+    }
+    if (fe2_freq.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      f2 = (unsigned __int64)atof (argv[count]);
+    }
+  }
+
+}
+
 void
 printLastError (int ErrorCode, std::ofstream* OutLog)
 {
@@ -95,13 +187,18 @@ get_average_iq_power (short scaling, double* real, double* imag,
   return 10*log10(power_sum/(2*NoOfBlockSamples));
 }
 
-int main()
+
+
+int
+main(int argc, char *argv[], char *envp[])
 {
-  std::ofstream* OutLog = new std::ofstream("log.txt", std::ios::out); // logfile
-  bool FileOutputFlag = true; // flag to indicate whether first
-                              // errorblock shall be written into file
-                              // or not
+ // Logfile
+  std::ofstream* OutLog = new std::ofstream("log.txt", std::ios::out);
+
   int ErrorCode;
+  CaptureOptions options;
+
+  options.parseCmd (argc,argv);
 
   char IPAddress[] = "192.168.0.2";
   TSMW_IQIF_MODE_t TSMWMode;
@@ -113,27 +210,22 @@ int main()
 
   std::cout << "Preselectors: " << TSMWMode.AMPS_CH1 << " " << TSMWMode.AMPS_CH2 << "\n";
 
-  char *pFileName = NULL; // if NULL then online streaming mode
-  char *pDescription = NULL;
-  //char *pFileName = "data.dat"; // if NULL then online streaming mode
-  //char *pDescription = "Test file";
-  unsigned int CreateIfExists = 1; // Only necessary for streaming to file
-
   TSMW_IQIF_MEAS_CTRL_t MeasCtrl;
   MeasCtrl.NoOfSamples = 1; // Number of IQ samples to measure
   MeasCtrl.FilterType = 1;  // Use userdefined filters (0 corresponds to pre-defined filters)
   MeasCtrl.FilterID = 1;    // Number of the filter that shall be used
   MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit / 2 is 12 Bit
   MeasCtrl.AttStrategy = 0; // Attenuation strategy, currently unused, shall be set to zero
-  MeasCtrl.Splitter = 0;    // 0: Disable splitter (splits the signal
-			    // from frontend 1 after the preselector
-			    // to both frontends)
+  MeasCtrl.Splitter = options.splitter; // 0: Disable splitter (splits
+					// the signal from frontend 1
+					// after the preselector to
+					// both frontends)
   MeasCtrl.Priority = 15;   // Relative priority, Valid range: 0 .. 15, 15 highest
 
 
   TSMW_IQIF_CH_CTRL_t ChannelCtrl1;
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl1 = &ChannelCtrl1;
-  ChannelCtrl1.Frequency = (unsigned __int64)1.0e9; // Center frequency in Hz
+  ChannelCtrl1.Frequency = options.f1; // Center frequency in Hz
   ChannelCtrl1.UseOtherFrontend = 0; // Reserved for future use, has to be zero
   ChannelCtrl1.NoOfChannels = 1;     // Number of channels that shall be used (1..4)
   ChannelCtrl1.Attenuation = 0;      // Attenuation to use (0..15dB)
@@ -155,7 +247,7 @@ int main()
 
   TSMW_IQIF_CH_CTRL_t ChannelCtrl2;
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl2 = &ChannelCtrl2;
-  ChannelCtrl2.Frequency = (unsigned __int64)1.0e9;
+  ChannelCtrl2.Frequency = options.f2;
   ChannelCtrl2.UseOtherFrontend = 0;
   ChannelCtrl2.NoOfChannels = 1;
   ChannelCtrl2.Attenuation = 0;
@@ -180,8 +272,10 @@ int main()
                                      // recommended
   StreamCtrl.MaxStreamSize = 4000;   // Maximum streaming size in MBytes.
  
-  // Uncomment this line for use of frontend 1 only
-  pChannelCtrl2 = NULL;
+  if (options.f2 == 0) {
+      // Use frontend 1 only
+    pChannelCtrl2 = NULL;
+  }
 
   unsigned int TimeOut = 10000; // in ms
 
@@ -238,7 +332,6 @@ int main()
     // Wait two seconds after connection establishment for frontend synchronization.
     std::cout << "Wait 5 seconds for frontend synchronization\n";
     *OutLog   << "Wait 5 seconds for frontend synchronization\n";
-    //Sleep (5000);
     clock_t trigger, seconds = 2;
     trigger = seconds * CLOCKS_PER_SEC + clock();
     while (trigger > clock());
@@ -253,15 +346,13 @@ int main()
       // pChannelCtrl2 means that frontend 1 or frontend 2,
       // respectively shall NOT be used for streamimg.
       ErrorCode = TSMWIQStream_c (TSMWID, &MeasCtrl, pChannelCtrl1, pChannelCtrl2, &StreamCtrl,
-                                  pFileName, pDescription, CreateIfExists);
+                                  options.pFilename, options.pDescription, (unsigned int)1);
       if (ErrorCode == 0){
         std::cout << "Streaming started\n";
         *OutLog   << "Streaming started\n";
         std::cout << "Press any key to interrupt\n";
 
-	if (pFileName == NULL) {
-	  // Open output log file
-	  //std::ofstream* OutBlock = new std::ofstream("iq_blocks.dat", std::ios::out);
+	if (options.pFilename == NULL) {
 	  // Continuously get and process streaming data until key pressed
 	  unsigned int CntBlock = 0;
 	  double iq_power = 0;
