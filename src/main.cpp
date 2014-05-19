@@ -63,6 +63,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   else
     return;
 
+  bool valid = false;
   std::string to_file ("-f");
   std::string iq_filename ("--filename");
   std::string iq_filename_description ("--description");
@@ -75,6 +76,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   for (int count = 1; count < argc; count++) {
     // std::cout << "  argv[" << count << "]   "
     // 	      << argv[count] << "\n";
+    valid = false;
     if (help.compare (argv[count]) == 0 || short_help.compare (argv[count]) == 0) {
       std::cout << "-f\t\tWrite IQ stream to file\n"
 		<< "--filename [string]\tSpecify file name to write IQ samples (default is iq_data.dat)\n"
@@ -91,37 +93,59 @@ CaptureOptions::parseCmd (int argc, char *argv[])
       sprintf_s (pFilename, 256, "iq_data.dat");
       pDescription = (char*) malloc (1024*sizeof(char));
       sprintf_s (pDescription, 1024, "n/a");
+      valid = true;
     }
     // fileOutputFlag needs to be activated first
     if (fileOutputFlag == true && iq_filename.compare (argv[count]) == 0) {
       assert (argc >= count+1);
       count++;
       sprintf_s (pFilename, 256, argv[count]);
+      valid = true;
     }
     if (fileOutputFlag == true && iq_filename_description.compare (argv[count]) == 0) {
       assert (argc >= count+1);
       count++;
       sprintf_s (pDescription, 1024, argv[count]);
+      valid = true;
     }
     if (fe_splitter.compare (argv[count]) == 0) {
       splitter = 1;
+      valid = true;
     }
     if (fe1_freq.compare (argv[count]) == 0) {
       assert (argc >= count+1);
       count++;
       f1 = (unsigned __int64)atof (argv[count]);
+      valid = true;
     }
     if (fe2_freq.compare (argv[count]) == 0) {
       assert (argc >= count+1);
       count++;
       f2 = (unsigned __int64)atof (argv[count]);
+      valid = true;
+    }
+    if (valid == false) {
+      std::cerr << "Invalid option: " << argv[count] << std::endl;
+      exit (-1);
     }
   }
 
 }
 
+class Util
+{
+public:
+  void printLastError (int, std::ofstream*);
+  void loadK1Interface (std::ofstream*);
+  void releaseK1Interface (std::ofstream*);
+
+  double get_iq_power (short scaling, double, double);
+  double get_average_iq_power (short, double*, double*,
+			       unsigned int);
+};
+
 void
-printLastError (int ErrorCode, std::ofstream* OutLog)
+Util::printLastError (int ErrorCode, std::ofstream* OutLog)
 {
   char *pErrorText;
 
@@ -132,7 +156,7 @@ printLastError (int ErrorCode, std::ofstream* OutLog)
 }
 
 void
-loadK1Interface (std::ofstream* OutLog)
+Util::loadK1Interface (std::ofstream* OutLog)
 {
   int ErrorCode;
 
@@ -146,7 +170,7 @@ loadK1Interface (std::ofstream* OutLog)
 }
 
 void
-releaseK1Interface (std::ofstream* OutLog)
+Util::releaseK1Interface (std::ofstream* OutLog)
 {
   int ErrorCode;
 
@@ -161,7 +185,7 @@ releaseK1Interface (std::ofstream* OutLog)
 }
 
 double
-get_iq_power (short scaling, double real, double imag)
+Util::get_iq_power (short scaling, double real, double imag)
 {
   double scaling_lin_mV;
 
@@ -172,8 +196,8 @@ get_iq_power (short scaling, double real, double imag)
 }
 
 double
-get_average_iq_power (short scaling, double* real, double* imag,
-		      unsigned int NoOfBlockSamples)
+Util::get_average_iq_power (short scaling, double* real, double* imag,
+			    unsigned int NoOfBlockSamples)
 {
   double scaling_lin_mV;
   double power_sum = 0;
@@ -190,13 +214,14 @@ get_average_iq_power (short scaling, double* real, double* imag,
 
 
 int
-main(int argc, char *argv[], char *envp[])
+main (int argc, char *argv[], char *envp[])
 {
  // Logfile
   std::ofstream* OutLog = new std::ofstream("log.txt", std::ios::out);
 
   int ErrorCode;
   CaptureOptions options;
+  Util util;
 
   options.parseCmd (argc,argv);
 
@@ -320,7 +345,7 @@ main(int argc, char *argv[], char *envp[])
   std::cout << "Number of samples per block: " << NoOfBlockSamples << "\n";
 
   // Initialize TSMW IQ Interface
-  loadK1Interface (OutLog);
+  util.loadK1Interface (OutLog);
 
   // Connect to TSMW
   ErrorCode = TSMWConnect_c (IPAddress, &TSMWMode, &TSMWID);
@@ -381,7 +406,7 @@ main(int argc, char *argv[], char *envp[])
 			  << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
 			  << std::endl;
 
-		iq_power = get_iq_power (pScaling[CntChannel],pReal[channel_offset],pImag[channel_offset]);
+		iq_power = util.get_iq_power (pScaling[CntChannel],pReal[channel_offset],pImag[channel_offset]);
 		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
 			  << " (first sample IQ power): "
 			  << iq_power << " dBm" << std::endl;
@@ -390,13 +415,13 @@ main(int argc, char *argv[], char *envp[])
 		  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
 
 		// Average power over all samples
-		iq_average_power = get_average_iq_power (pScaling[CntChannel],&pReal[channel_offset],&pReal[channel_offset],NoOfBlockSamples);
+		iq_average_power = util.get_average_iq_power (pScaling[CntChannel],&pReal[channel_offset],&pReal[channel_offset],NoOfBlockSamples);
 		std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
 			  << " (avg. IQ power): "
 			  << iq_average_power << " dBm" << std::endl;
 	      }
 	    } else {
-	      printLastError (ErrorCode,OutLog);
+	      util.printLastError (ErrorCode,OutLog);
 	    }
 	    CntBlock = CntBlock + 1;
 	    if (_kbhit()) {
@@ -415,19 +440,19 @@ main(int argc, char *argv[], char *envp[])
           std::cout << "Streaming stopped\n";
           *OutLog   << "Streaming stopped\n";
         } else {
-          printLastError (ErrorCode,OutLog);
+          util.printLastError (ErrorCode,OutLog);
         }
       } else {
-        printLastError (ErrorCode,OutLog);
+        util.printLastError (ErrorCode,OutLog);
       }
     } else {
-      printLastError (ErrorCode,OutLog);
+      util.printLastError (ErrorCode,OutLog);
     }
   } else {
-    printLastError (ErrorCode,OutLog);
+    util.printLastError (ErrorCode,OutLog);
   }
 
-  releaseK1Interface (OutLog);
+  util.releaseK1Interface (OutLog);
 
   // while (_kbhit()) {
   //   char ch = _getch();
