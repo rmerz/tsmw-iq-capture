@@ -84,7 +84,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
       std::cout << "-f\t\tWrite IQ stream to file\n"
 		<< "--filename [string]\tSpecify file name to write IQ samples (default is iq_data.dat)\n"
 		<< "--description [string]\tSpecify description to attach with IQ samples capture (default is n/a)\n"
-		<< "--fe1_freq [double]\tFrequency of frontend 1 in Hz (default is 1e9)\n"
+		<< "--fe1_freq [double]\tFrequency of frontend 1 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 1 (default is 1e9)\n"
 		<< "--fe2_freq [double]\tFrequency of frontend 2 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 2 (default is 0 e.g inactive)\n"
 		<< "--splitter\tActivate splitter from FE1 to FE2 (default is inactive)\n"
 		<< "--block_length\tSize in bits of the measurement blocks (default is 1e6)\n"
@@ -307,8 +307,12 @@ main (int argc, char *argv[], char *envp[])
                                      // recommended
   StreamCtrl.MaxStreamSize = 4000;   // Maximum streaming size in MBytes.
  
+  if (options.f1 == 0) {
+      // Disable frontend 1 only
+    pChannelCtrl1 = NULL;
+  }
   if (options.f2 == 0) {
-      // Use frontend 1 only
+      // Disable frontend 2 only
     pChannelCtrl2 = NULL;
   }
 
@@ -323,12 +327,16 @@ main (int argc, char *argv[], char *envp[])
   if (pChannelCtrl1 == NULL) {
     // Frontend 2 used only
     NoOfChannels = pChannelCtrl2->NoOfChannels;
+    std::cout << "FE2 freq: " << ChannelCtrl2.Frequency << std::endl;
   } else if (pChannelCtrl2 == NULL) {
     // Frontend 1 used only
     NoOfChannels = pChannelCtrl1->NoOfChannels;
+    std::cout << "FE1 freq: " << ChannelCtrl1.Frequency << std::endl;
   } else {
     // Both frontends used
     NoOfChannels = pChannelCtrl1->NoOfChannels + pChannelCtrl2->NoOfChannels;
+    std::cout << "FE1 freq: " << ChannelCtrl1.Frequency << std::endl;
+    std::cout << "FE2 freq: " << ChannelCtrl2.Frequency << std::endl;
   }
   std::cout << "Total number of channels: " << NoOfChannels << "\n";
 
