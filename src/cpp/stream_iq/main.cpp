@@ -13,8 +13,8 @@
  *
  */
 
-#include "TSMWIQInterfaceFunc.h"
-#include "TSMWIQInterfaceTypes.h"
+#include "../include/TSMWIQInterfaceFunc.h"
+#include "../include/TSMWIQInterfaceTypes.h"
 
 // Include filter specification for 1MHz sampling rate
 #include "Filter_1MHz.h"
