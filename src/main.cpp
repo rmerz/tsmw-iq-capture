@@ -73,12 +73,10 @@ get_iq_power (short scaling, double real, double imag)
 {
   double scaling_lin_mV;
 
-  // See TSMWIQPlotData.m: 2000 is for 100 * 20
+  // See TSMWIQPlotData.m: 2000 is for 100 * 20 (voltage)
   scaling_lin_mV = pow(10,scaling/100/20);
-  // Factor of 2 is because we need to compensate the sqrt(2) that
-  // pops up when going to baseband
+  // Factor of 2 is because we assume a CW (sine/cosine) is sent.
   return 10*log10((pow(real*scaling_lin_mV,2) + pow(imag*scaling_lin_mV,2))/2);
-  //return 10*log10((pow(real*scaling_lin_mV,2) + pow(imag*scaling_lin_mV,2))/(100));
 }
 
 double
