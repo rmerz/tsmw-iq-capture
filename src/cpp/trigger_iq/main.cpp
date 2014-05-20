@@ -22,8 +22,9 @@
 #include <tchar.h>
 
 #include "../common/util.h"
-// Include filter specification for 1MHz sampling rate
+// Include filter specification for 2 MS/s and 0.22 MS/s sampling rate
 #include "../include/Filter_1MHz.h"
+#include "../include/Filter_110kHz.h"
 
 class CaptureOptions
 {
@@ -229,6 +230,8 @@ main (int argc, char *argv[], char *envp[])
   }
   std::cout << "Total number of channels: " << NoOfChannels << "\n";
 
+  TSMW_IQIF_RESULT_t IQResult;
+
   // Initialize TSMW IQ Interface
   util.loadK1Interface ();
 
@@ -238,6 +241,80 @@ main (int argc, char *argv[], char *envp[])
     util.printLastError (ErrorCode);
     exit (-1);
   }
+  util.waitForFrontendSync ();
+
+  // Send user-specific resampling filter to TSMW
+  //ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
+  ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
+  if (ErrorCode != 0) {
+    util.kill (ErrorCode);
+  }
+  std::cout << "Filter set\n";
+
+  // Explicitely configure trigger lines
+  int Trig1Value, Trig2Value;
+  ErrorCode = TSMWTrigger_c (TSMWID, 3, 0,
+                             &Trig1Value, &Trig2Value);
+  if (ErrorCode != 0) {
+    util.kill (ErrorCode);
+  }
+  std::cout << "Trigger lines: " << Trig1Value << " " << Trig2Value << "\n";
+
+  // Setup triggered measurement
+  unsigned long MeasRequestID;
+  unsigned long long *pStartTimes = NULL;
+  long NoOfStartTimes = 0;
+  TSMW_IQIF_TRIG_CTRL_t TriggerParam;
+  TSMW_IQIF_TRIG_CTRL_t *pTriggerParam = &TriggerParam;
+  TriggerParam.Cmd = 0;         // 0: Start triggering (when used in TSMWIQMeasureTrig command)
+                                // 1: Stop triggered measurement
+  TriggerParam.Mode = 0;        // Trigger mode, has to be zero
+  TriggerParam.Falling = 0;     // Trigger edge, 0: rising, 1: falling
+  TriggerParam.TriggerLine = 3; // 1: Use trigger input 1
+                                // 2: Use trigger input 2
+                                // 3: Trigger on both inputs
+  TriggerParam.MeasRequestID; // Meas.request ID of period. meas.req., only used when changing
+                              // parameters of a triggered measurement
+  TriggerParam.Att;    // New attenuator setting for each channel (only used when Cmd == 2)
+  TriggerParam.Preamp; // New preamp setting for each channel (only used when Cmd == 2)
+
+  do {
+    ErrorCode = TSMWIQMeasureTrig_c (TSMWID,
+				     &MeasRequestID, pStartTimes, NoOfStartTimes,
+				     &MeasCtrl, pChannelCtrl1, pChannelCtrl2,
+				     pTriggerParam);
+    // ErrorCode = TSMWIQMeasure_c (TSMWID,
+    // 			       &MeasRequestID, pStartTimes, NoOfStartTimes,
+    // 			       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+    if (ErrorCode != 0) {
+      util.kill (ErrorCode);
+    }
+    std::cout << "Triggered measurement configured\n";
+
+    std::cout << "Wait for result to become available\n";
+    ErrorCode = TSMWIQGetResultParam_c (MeasRequestID, timeOut, &IQResult);
+    if (ErrorCode != 0) {
+      util.kill (ErrorCode);
+    }
+    std::cout << "Result parameter obtained\n";
+
+    double* pReal = (double *) malloc (NoOfChannels*sizeof(double));
+    double* pImag = (double *) malloc (NoOfChannels*sizeof(double));
+    short* pScaling = (short *) malloc (NoOfChannels*sizeof(short));
+    unsigned long* pOverflow =  (unsigned long *) malloc (NoOfChannels*sizeof(unsigned long));
+    unsigned int* pCalibrated = (unsigned int *) malloc (NoOfChannels*sizeof(unsigned int));
+    ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID, timeOut, &IQResult,
+				       pReal, pImag, pScaling, pOverflow, pCalibrated,
+				       NoOfChannels, NoOfChannels, 0, 0);
+    if (ErrorCode != 0) {
+      util.kill (ErrorCode);
+    }
+    std::cout << "Result obtained\n";
+    for (unsigned int k = 0; k < NoOfChannels; k++) {
+      std::cout << "Channel " << k << ": " << pOverflow[k] << " " << pScaling[k] << " " << pReal[k] << " " << pImag[k] << std::endl;
+    }
+  } while (!_kbhit());
+
 
   util.releaseK1Interface ();
 
