@@ -13,8 +13,7 @@
  *
  */
 
-#include "../include/TSMWIQInterfaceFunc.h"
-#include "../include/TSMWIQInterfaceTypes.h"
+#include "../common/util.h"
 // Include filter specification for 1MHz sampling rate
 #include "../include/Filter_1MHz.h"
 
@@ -131,96 +130,11 @@ CaptureOptions::parseCmd (int argc, char *argv[])
       exit (-1);
     }
   }
-
 }
-
-class Util
-{
-public:
-  void printLastError (int, std::ofstream*);
-  void loadK1Interface (std::ofstream*);
-  void releaseK1Interface (std::ofstream*);
-
-  double get_iq_power (short scaling, double, double);
-  double get_average_iq_power (short, double*, double*,
-                               unsigned int);
-};
-
-void
-Util::printLastError (int ErrorCode, std::ofstream* OutLog)
-{
-  char *pErrorText;
-
-  // Use TSMWGetLastError_c to get error message and error code
-  pErrorText = TSMWGetLastError_c ( &ErrorCode );
-  std::cout << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-  *OutLog   << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-}
-
-void
-Util::loadK1Interface (std::ofstream* OutLog)
-{
-  int ErrorCode;
-
-  ErrorCode = TSMWInitInterface_c ();
-  if (ErrorCode == 0) {
-    std::cout << "Initialized\n";
-    *OutLog   << "Initialized\n";
-  } else {
-    printLastError (ErrorCode,OutLog);
-  }
-}
-
-void
-Util::releaseK1Interface (std::ofstream* OutLog)
-{
-  int ErrorCode;
-
-  // Release interface (which closes connection to TSMW)
-  ErrorCode = TSMWReleaseInterface_c ();
-  if ( ErrorCode == 0){
-    std::cout << "Released\n";
-    *OutLog   << "Released\n";
-  } else {
-    printLastError (ErrorCode,OutLog);
-  }
-}
-
-double
-Util::get_iq_power (short scaling, double real, double imag)
-{
-  double scaling_lin_mV;
-
-  // See TSMWIQPlotData.m: 2000 is for 100 * 20 (voltage)
-  scaling_lin_mV = std::pow(10,(double)scaling/100/20);
-  // Factor of 2 is because we assume a CW (sine/cosine) is sent.
-  return 10*std::log10((std::pow(real*scaling_lin_mV,2) + std::pow(imag*scaling_lin_mV,2))/2);
-}
-
-double
-Util::get_average_iq_power (short scaling, double* real, double* imag,
-                            unsigned int NoOfBlockSamples)
-{
-  double scaling_lin_mV;
-  double power_sum = 0;
-
-  scaling_lin_mV = std::pow(10,(double)scaling/100/20);
-  for (unsigned int CntSample = 0; CntSample < NoOfBlockSamples; CntSample++ ) {
-    power_sum = power_sum +
-      std::pow(real[CntSample]*scaling_lin_mV,2) +
-      std::pow(imag[CntSample]*scaling_lin_mV,2);
-  }
-  return 10*std::log10(power_sum/(2*NoOfBlockSamples));
-}
-
-
 
 int
 main (int argc, char *argv[], char *envp[])
 {
-  // Logfile
-  std::ofstream* OutLog = new std::ofstream("log.txt", std::ios::out);
-
   int ErrorCode;
   CaptureOptions options;
   Util util;
@@ -355,18 +269,16 @@ main (int argc, char *argv[], char *envp[])
   std::cout << "Number of samples per block: " << NoOfBlockSamples << "\n";
 
   // Initialize TSMW IQ Interface
-  util.loadK1Interface (OutLog);
+  util.loadK1Interface ();
 
   // Connect to TSMW
   ErrorCode = TSMWConnect_c (IPAddress, &TSMWMode, &TSMWID);
   if (ErrorCode == 0) {
 
     std::cout << "Connected\n";
-    *OutLog   << "Connected\n";
 
     // Wait two seconds after connection establishment for frontend synchronization.
     std::cout << "Wait 5 seconds for frontend synchronization\n";
-    *OutLog   << "Wait 5 seconds for frontend synchronization\n";
     clock_t trigger, seconds = 2;
     trigger = seconds * CLOCKS_PER_SEC + clock();
     while (trigger > clock());
@@ -375,7 +287,6 @@ main (int argc, char *argv[], char *envp[])
     ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
     if (ErrorCode == 0) {
       std::cout << "Filter set\n";
-      *OutLog   << "Filter set\n";
       // Start streaming with predefined measurement and streaming
       // parameters Passing a NULL vector for pChannelCtrl1 or
       // pChannelCtrl2 means that frontend 1 or frontend 2,
@@ -384,7 +295,6 @@ main (int argc, char *argv[], char *envp[])
                                   options.pFilename, options.pDescription, (unsigned int)1);
       if (ErrorCode == 0){
         std::cout << "Streaming started\n";
-        *OutLog   << "Streaming started\n";
         std::cout << "Press any key to interrupt\n";
 
         if (options.pFilename == NULL) {
@@ -436,11 +346,11 @@ main (int argc, char *argv[], char *envp[])
                           << iq_average_power << " dBm" << std::endl;
               }
             } else {
-              util.printLastError (ErrorCode,OutLog);
+              util.printLastError (ErrorCode);
             }
             CntBlock = CntBlock + 1;
             if (_kbhit()) {
-              *OutLog   << "Number of blocks: " << CntBlock << std::endl;
+              std::cout   << "Number of blocks: " << CntBlock << std::endl;
             }
           } while (!_kbhit());
           // delete OutBlock;
@@ -453,21 +363,20 @@ main (int argc, char *argv[], char *envp[])
         ErrorCode = TSMWIQStopStreaming_c ( TSMWID, (unsigned char)StreamCtrl.StreamID, &StreamStatus);
         if ( ErrorCode == 0 ){
           std::cout << "Streaming stopped\n";
-          *OutLog   << "Streaming stopped\n";
         } else {
-          util.printLastError (ErrorCode,OutLog);
+          util.printLastError (ErrorCode);
         }
       } else {
-        util.printLastError (ErrorCode,OutLog);
+        util.printLastError (ErrorCode);
       }
     } else {
-      util.printLastError (ErrorCode,OutLog);
+      util.printLastError (ErrorCode);
     }
   } else {
-    util.printLastError (ErrorCode,OutLog);
+    util.printLastError (ErrorCode);
   }
 
-  util.releaseK1Interface (OutLog);
+  util.releaseK1Interface ();
 
   // while (_kbhit()) {
   //   char ch = _getch();
@@ -475,6 +384,5 @@ main (int argc, char *argv[], char *envp[])
   // std::cout << "Press any key to quit program\n";
   // while(!_kbhit());
 
-  delete OutLog;
   return (0);
 }

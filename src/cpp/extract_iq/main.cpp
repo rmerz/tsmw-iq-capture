@@ -27,8 +27,7 @@
 
 #include <tchar.h>
 
-#include "../include/TSMWIQInterfaceFunc.h"
-#include "../include/TSMWIQInterfaceTypes.h"
+#include "../common/util.h"
 
 class ExtractOptions
 {
@@ -100,84 +99,6 @@ ExtractOptions::parseCmd (int argc, char *argv[])
     }
   }
 }
-
-class Util
-{
-public:
-  void printLastError (int);
-  void loadK1Interface ();
-  void releaseK1Interface ();
-
-  double get_iq_power (short scaling, double, double);
-  double get_average_iq_power (short, double*, double*,
-                               unsigned int);
-};
-
-void
-Util::printLastError (int ErrorCode)
-{
-  char *pErrorText;
-
-  // Use TSMWGetLastError_c to get error message and error code
-  pErrorText = TSMWGetLastError_c ( &ErrorCode );
-  std::cout << "TSMWIQStopStreaming_c: ErrorCode: " << ErrorCode << " ErrorText: " << pErrorText << std::endl;
-}
-
-void
-Util::loadK1Interface ()
-{
-  int ErrorCode;
-
-  ErrorCode = TSMWInitInterface_c ();
-  if (ErrorCode == 0) {
-    std::cout << "Initialized\n";
-  } else {
-    printLastError (ErrorCode);
-  }
-}
-
-void
-Util::releaseK1Interface ()
-{
-  int ErrorCode;
-
-  // Release interface (which closes connection to TSMW)
-  ErrorCode = TSMWReleaseInterface_c ();
-  if ( ErrorCode == 0){
-    std::cout << "Released\n";
-  } else {
-    printLastError (ErrorCode);
-  }
-}
-
-double
-Util::get_iq_power (short scaling, double real, double imag)
-{
-  double scaling_lin_mV;
-
-  // See TSMWIQPlotData.m: 2000 is for 100 * 20 (voltage)
-  scaling_lin_mV = std::pow(10,(double)scaling/100/20);
-  // Factor of 2 is because we assume a CW (sine/cosine) is sent.
-  return 10*std::log10((std::pow(real*scaling_lin_mV,2) + std::pow(imag*scaling_lin_mV,2))/2);
-}
-
-double
-Util::get_average_iq_power (short scaling, double* real, double* imag,
-                            unsigned int blockSize)
-{
-  double scaling_lin_mV;
-  double power_sum = 0;
-
-  for (unsigned int k = 0; k < blockSize; k++ ) {
-    power_sum = power_sum +
-      std::pow(real[k],2) +
-      std::pow(imag[k],2);
-  }
-  // return 10*log10(power_sum*pow(scaling_lin_mV,2)/(2*blockSize));
-  scaling_lin_mV = std::pow(10,(double)scaling/100/20);
-  return 10*std::log10(power_sum/(2*blockSize))+20*std::log10(scaling_lin_mV);
-}
-
 
 int
 main (int argc, char *argv[], char *envp[])

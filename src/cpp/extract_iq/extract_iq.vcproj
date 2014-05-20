@@ -184,6 +184,10 @@
 				RelativePath=".\main.cpp"
 				>
 			</File>
+			<File
+				RelativePath="..\common\util.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -196,6 +200,10 @@
 			</File>
 			<File
 				RelativePath="..\include\TSMWIQInterfaceTypes.h"
+				>
+			</File>
+			<File
+				RelativePath="..\common\util.h"
 				>
 			</File>
 		</Filter>
