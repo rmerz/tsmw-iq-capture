@@ -280,8 +280,8 @@ main (int argc, char *argv[], char *envp[])
     // Wait two seconds after connection establishment for frontend synchronization.
     std::cout << "Wait 5 seconds for frontend synchronization\n";
     clock_t trigger, seconds = 2;
-    trigger = seconds * CLOCKS_PER_SEC + clock();
-    while (trigger > clock());
+    trigger = seconds * CLOCKS_PER_SEC + clock ();
+    while (trigger > clock ());
 
     // Send user-specific resampling filter to TSMW
     ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
