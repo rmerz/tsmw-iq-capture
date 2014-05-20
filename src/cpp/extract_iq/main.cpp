@@ -31,23 +31,30 @@ class ExtractOptions
 private:
 
 public:
+  ExtractOptions (void) : limitExtractedBlock (0)
+  {}
+
   void parseCmd (int, char **);
   void printUsage (char* program);
 
+  unsigned int limitExtractedBlock;
   std::string iq_file_location;
 };
 
 void
 ExtractOptions::printUsage (char* program)
 {
-  std::cout << program << " [-h|--help] filename\n" << std::endl;
+  std::cout << program << " [-h|--help|-n INT] filename\n\n"
+            << "\t-n INT\t\tNumber of blocks to extract (default is all)\n"
+            << "\t-h|--help\tDisplay this help message"
+            << std::endl;
 }
 
 void
 ExtractOptions::parseCmd (int argc, char *argv[])
 {
   // Display each command-line argument
-  if (argc != 2) {
+  if (argc == 1) {
     printUsage (argv[0]);
     exit (0);
   }
@@ -55,12 +62,19 @@ ExtractOptions::parseCmd (int argc, char *argv[])
   bool valid = false;
   std::string help ("--help");
   std::string short_help ("-h");
+  std::string blocks ("-n");
 
   for (int count = 1; count < argc; count++) {
     valid = false;
     if (help.compare (argv[count]) == 0 || short_help.compare (argv[count]) == 0) {
       printUsage (argv[0]);
       exit (0);
+    }
+    if (blocks.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      limitExtractedBlock = atoi (argv[count]);
+      valid = true;
     }
     // Last option: must be the file location of the file to extract
     if (count+1 >= argc) {
@@ -83,7 +97,7 @@ public:
 
   double get_iq_power (short scaling, double, double);
   double get_average_iq_power (short, double*, double*,
-                               unsigned int, unsigned int);
+                               unsigned int);
 };
 
 void
@@ -136,15 +150,15 @@ Util::get_iq_power (short scaling, double real, double imag)
 
 double
 Util::get_average_iq_power (short scaling, double* real, double* imag,
-                            unsigned int offset, unsigned int blockSize)
+                            unsigned int blockSize)
 {
   double scaling_lin_mV;
   double power_sum = 0;
 
   for (unsigned int k = 0; k < blockSize; k++ ) {
     power_sum = power_sum +
-      pow(real[offset+k],2) +
-      pow(imag[offset+k],2);
+      pow(real[k],2) +
+      pow(imag[k],2);
   }
   // return 10*log10(power_sum*pow(scaling_lin_mV,2)/(2*blockSize));
   scaling_lin_mV = pow(10,(double)scaling/100/20);
@@ -208,7 +222,10 @@ main (int argc, char *argv[], char *envp[])
 
   unsigned int timeOut = 10000;
   unsigned int channelOffset = 0;
-  for (unsigned int countBlocks = 0; countBlocks < StreamInfo.NoOfBlocks; countBlocks++) {
+  unsigned int numberOfBlocks = StreamInfo.NoOfBlocks;
+  if (options.limitExtractedBlock > 0)
+    numberOfBlocks = options.limitExtractedBlock;
+  for (unsigned int countBlocks = 0; countBlocks < numberOfBlocks; countBlocks++) {
     offset = countBlocks * blockSize;
     ErrorCode = TSMWIQGetStreamDouble_c (StreamID, timeOut, &IQResult,
                                          pReal, pImag, pScaling, pOverflow,
@@ -232,8 +249,7 @@ main (int argc, char *argv[], char *envp[])
 
       std::cout << "Channel " << countChannels << ": avg. IQ power "
                 << util.get_average_iq_power (pScaling[countChannels],
-                                              pReal, pImag,
-                                              channelOffset,
+                                              &pReal[channelOffset], &pImag[channelOffset],
                                               blockSize)
                 << std::endl;
 
