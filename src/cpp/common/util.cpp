@@ -47,8 +47,11 @@ Util::get_iq_power (short scaling, double real, double imag)
 
   // See TSMWIQPlotData.m: 2000 is for 100 * 20 (voltage)
   scaling_lin_mV = std::pow(10,(double)scaling/100/20);
-  // Factor of 2 is because we assume a CW (sine/cosine) is sent.
-  return 10*std::log10((std::pow(real*scaling_lin_mV,2) + std::pow(imag*scaling_lin_mV,2))/2);
+  /*
+   * // Factor of 2 is because we assume a CW (sine/cosine) is sent.
+   * return 10*std::log10((std::pow(real*scaling_lin_mV,2) + std::pow(imag*scaling_lin_mV,2))/2);
+  */
+  return 10*std::log10(std::pow(real*scaling_lin_mV,2) + std::pow(imag*scaling_lin_mV,2));
 }
 
 double
@@ -65,5 +68,6 @@ Util::get_average_iq_power (short scaling, double* real, double* imag,
   }
   // return 10*log10(power_sum*pow(scaling_lin_mV,2)/(2*blockSize));
   scaling_lin_mV = std::pow(10,(double)scaling/100/20);
-  return 10*std::log10(power_sum/(2*blockSize))+20*std::log10(scaling_lin_mV);
+  // return 10*std::log10(power_sum/(2*blockSize))+20*std::log10(scaling_lin_mV);
+  return 10*std::log10(power_sum/(blockSize))+20*std::log10(scaling_lin_mV);
 }
