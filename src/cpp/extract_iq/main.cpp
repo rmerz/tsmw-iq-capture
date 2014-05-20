@@ -19,7 +19,11 @@
 #include <iomanip>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <vector>
+
+#include <stdio.h>
 
 #include <tchar.h>
 
@@ -31,20 +35,23 @@ class ExtractOptions
 private:
 
 public:
-  ExtractOptions (void) : limitExtractedBlock (0)
+  ExtractOptions (void) : limitExtractedBlock (0),
+                          saveToFile (false)
   {}
 
   void parseCmd (int, char **);
   void printUsage (char* program);
 
   unsigned int limitExtractedBlock;
+  bool saveToFile;
   std::string iq_file_location;
 };
 
 void
 ExtractOptions::printUsage (char* program)
 {
-  std::cout << program << " [-h|--help|-n INT] filename\n\n"
+  std::cout << program << " [-s|-n INT|-h|--help] filename\n\n"
+            << "\t-s\t\tSave stream data to text file (inactive by default)\n"
             << "\t-n INT\t\tNumber of blocks to extract (default is all)\n"
             << "\t-h|--help\tDisplay this help message"
             << std::endl;
@@ -63,6 +70,7 @@ ExtractOptions::parseCmd (int argc, char *argv[])
   std::string help ("--help");
   std::string short_help ("-h");
   std::string blocks ("-n");
+  std::string print ("-s");
 
   for (int count = 1; count < argc; count++) {
     valid = false;
@@ -76,13 +84,18 @@ ExtractOptions::parseCmd (int argc, char *argv[])
       limitExtractedBlock = atoi (argv[count]);
       valid = true;
     }
+    if (print.compare (argv[count]) == 0) {
+      saveToFile = true;
+      valid = true;
+    }
     // Last option: must be the file location of the file to extract
     if (count+1 >= argc) {
       iq_file_location.assign(argv[count]);
       valid = true;
     }
     if (valid == false) {
-      std::cerr << "Invalid option: " << argv[count] << std::endl;
+      std::cerr << "Invalid option or option specification: " << argv[count] << std::endl;
+      printUsage (argv[0]);
       exit (-1);
     }
   }
@@ -220,6 +233,19 @@ main (int argc, char *argv[], char *envp[])
   unsigned int *pCalibrated = (unsigned int*) malloc (numberOfChannels*sizeof(unsigned int));
   unsigned __int64 offset = 0;
 
+  std::vector<FILE *> textIQFiles (numberOfChannels);
+  if (options.saveToFile) {
+    for (unsigned int k = 0; k < textIQFiles.size (); k++) {
+      std::string filename = options.iq_file_location +
+        std::string ("_channel_") + static_cast<std::ostringstream*>( &(std::ostringstream() << k) )->str() + std::string(".csv");
+      std::cout << filename << std::endl;
+      textIQFiles[k] = fopen (filename.c_str (), "w");
+
+    }
+  }
+
+
+
   unsigned int timeOut = 10000;
   unsigned int channelOffset = 0;
   unsigned int numberOfBlocks = StreamInfo.NoOfBlocks;
@@ -236,26 +262,41 @@ main (int argc, char *argv[], char *envp[])
       util.releaseK1Interface ();
       exit (-1);
     }
-    std::cout << "Fetched block " << countBlocks << std::endl;
+    std::cout << "Fetched block " << countBlocks << ": sampling rate "
+              << IQResult.Fsample << std::endl;
+
     // Visual validation
     for (unsigned int countChannels = 0; countChannels < numberOfChannels; countChannels++) {
       channelOffset = countChannels*blockSize;
+      /* 
       std::cout << "Channel " << countChannels 
                 << ": scaling/real/imag " << pScaling[countChannels] << " "
                 << pReal[channelOffset] << " " << pImag[channelOffset] << std::endl;
 
       std::cout << "Channel " << countChannels << ": IQ power 1st sample "
                 << util.get_iq_power (pScaling[countChannels], pReal[channelOffset], pImag[channelOffset]) << std::endl;
-
+      */
       std::cout << "Channel " << countChannels << ": avg. IQ power "
                 << util.get_average_iq_power (pScaling[countChannels],
                                               &pReal[channelOffset], &pImag[channelOffset],
                                               blockSize)
                 << std::endl;
 
+      if (options.saveToFile) {
+        for (unsigned int k = 0; k < blockSize; k++) {
+          fprintf (textIQFiles[countChannels], "%f;%hd;%d;%d\n",
+                   IQResult.Fsample, pScaling[countChannels],
+                   (int)pReal[channelOffset+k],(int)pImag[channelOffset+k]);
+        }
+      }
     }
   }
 
+  if (options.saveToFile) {
+    for (unsigned int k = 0; k < textIQFiles.size (); k++) {
+      fclose (textIQFiles[k]);
+    }
+  }
 
   ErrorCode = TSMWIQCloseStreamFile_c (StreamID);
   if (ErrorCode != 0) {
