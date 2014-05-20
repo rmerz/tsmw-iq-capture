@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <iomanip>
 #include <fstream>
-#include <math.h>
+#include <cmath>
 
 #include <iostream>
 #include <tchar.h>

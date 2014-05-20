@@ -14,8 +14,8 @@
 #include <windows.h>
 #include <conio.h>
 #include <assert.h>
-#include <math.h>
 
+#include <cmath>
 #include <iomanip>
 #include <fstream>
 #include <iostream>
@@ -156,9 +156,9 @@ Util::get_iq_power (short scaling, double real, double imag)
   double scaling_lin_mV;
 
   // See TSMWIQPlotData.m: 2000 is for 100 * 20 (voltage)
-  scaling_lin_mV = pow(10,(double)scaling/100/20);
+  scaling_lin_mV = std::pow(10,(double)scaling/100/20);
   // Factor of 2 is because we assume a CW (sine/cosine) is sent.
-  return 10*log10((pow(real*scaling_lin_mV,2) + pow(imag*scaling_lin_mV,2))/2);
+  return 10*std::log10((std::pow(real*scaling_lin_mV,2) + std::pow(imag*scaling_lin_mV,2))/2);
 }
 
 double
@@ -170,12 +170,12 @@ Util::get_average_iq_power (short scaling, double* real, double* imag,
 
   for (unsigned int k = 0; k < blockSize; k++ ) {
     power_sum = power_sum +
-      pow(real[k],2) +
-      pow(imag[k],2);
+      std::pow(real[k],2) +
+      std::pow(imag[k],2);
   }
   // return 10*log10(power_sum*pow(scaling_lin_mV,2)/(2*blockSize));
-  scaling_lin_mV = pow(10,(double)scaling/100/20);
-  return 10*log10(power_sum/(2*blockSize))+20*log10(scaling_lin_mV);
+  scaling_lin_mV = std::pow(10,(double)scaling/100/20);
+  return 10*std::log10(power_sum/(2*blockSize))+20*std::log10(scaling_lin_mV);
 }
 
 
