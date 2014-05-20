@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <ctime>
 
 void
 Util::printLastError (int ErrorCode)
@@ -38,6 +39,24 @@ Util::releaseK1Interface ()
   } else {
     printLastError (ErrorCode);
   }
+}
+
+void
+Util::kill (int ErrorCode)
+{
+  printLastError (ErrorCode);
+  releaseK1Interface ();
+  exit (-1);
+}
+
+void
+Util::waitForFrontendSync ()
+{
+    // Wait two seconds after connection establishment for frontend synchronization.
+    std::cout << "Wait 5 seconds for frontend synchronization\n";
+    clock_t trigger, seconds = 2;
+    trigger = seconds * CLOCKS_PER_SEC + clock ();
+    while (trigger > clock ());
 }
 
 double

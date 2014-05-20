@@ -14,7 +14,7 @@
  */
 
 #include "../common/util.h"
-// Include filter specification for 1MHz sampling rate
+// Include filter specification for 2 MS/s and 0.22 MS/s sampling rate
 #include "../include/Filter_1MHz.h"
 #include "../include/Filter_110kHz.h"
 
@@ -278,11 +278,7 @@ main (int argc, char *argv[], char *envp[])
 
     std::cout << "Connected\n";
 
-    // Wait two seconds after connection establishment for frontend synchronization.
-    std::cout << "Wait 5 seconds for frontend synchronization\n";
-    clock_t trigger, seconds = 2;
-    trigger = seconds * CLOCKS_PER_SEC + clock ();
-    while (trigger > clock ());
+    util.waitForFrontendSync ();
 
     // Send user-specific resampling filter to TSMW
     //ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
