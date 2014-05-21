@@ -35,7 +35,8 @@ private:
 
 public:
   ExtractOptions (void) : limitExtractedBlock (0),
-                          saveToFile (false)
+                          saveToFile (false),
+                          binaryFormat (false)
   {}
 
   void parseCmd (int, char **);
@@ -43,6 +44,7 @@ public:
 
   unsigned int limitExtractedBlock;
   bool saveToFile;
+  bool binaryFormat;
   std::string iq_file_location;
 };
 
@@ -50,7 +52,8 @@ void
 ExtractOptions::printUsage (char* program)
 {
   std::cout << program << " [-s|-n INT|-h|--help] filename\n\n"
-            << "\t-s\t\tSave stream data to text file (inactive by default)\n"
+            << "\t-s\t\tSave stream data to file (inactive by default)\n"
+            << "\t-b\t\tSave stream data in binary format (text by default)\n"
             << "\t-n INT\t\tNumber of blocks to extract (default is all)\n"
             << "\t-h|--help\tDisplay this help message"
             << std::endl;
@@ -70,6 +73,7 @@ ExtractOptions::parseCmd (int argc, char *argv[])
   std::string short_help ("-h");
   std::string blocks ("-n");
   std::string print ("-s");
+  std::string binary ("-b");
 
   for (int count = 1; count < argc; count++) {
     valid = false;
@@ -85,6 +89,10 @@ ExtractOptions::parseCmd (int argc, char *argv[])
     }
     if (print.compare (argv[count]) == 0) {
       saveToFile = true;
+      valid = true;
+    }
+    if (binary.compare (argv[count]) == 0) {
+      binaryFormat = true;
       valid = true;
     }
     // Last option: must be the file location of the file to extract
@@ -158,10 +166,13 @@ main (int argc, char *argv[], char *envp[])
   if (options.saveToFile) {
     for (unsigned int k = 0; k < textIQFiles.size (); k++) {
       std::string filename = options.iq_file_location +
-        std::string ("_channel_") + static_cast<std::ostringstream*>( &(std::ostringstream() << k) )->str() + std::string(".csv");
+        std::string ("_channel_") + static_cast<std::ostringstream*>( &(std::ostringstream() << k) )->str();
       std::cout << filename << std::endl;
-      textIQFiles[k] = fopen (filename.c_str (), "w");
-
+      if (options.binaryFormat) {
+        textIQFiles[k] = fopen ((filename + std::string(".dat")).c_str (), "wb");
+      } else {
+        textIQFiles[k] = fopen ((filename + std::string(".csv")).c_str (), "w");
+      }
     }
   }
 
@@ -204,10 +215,29 @@ main (int argc, char *argv[], char *envp[])
                 << std::endl;
 
       if (options.saveToFile) {
-        for (unsigned int k = 0; k < blockSize; k++) {
-          fprintf (textIQFiles[countChannels], "%f;%hd;%d;%d\n",
-                   IQResult.Fsample, pScaling[countChannels],
-                   (int)pReal[channelOffset+k],(int)pImag[channelOffset+k]);
+        if (options.binaryFormat) {
+          std::cout << "Binary mode: "
+                    << sizeof (blockSize) << " "
+                    << sizeof (IQResult.Fsample) << " "
+                    << sizeof (pScaling[countChannels]) << " "
+                    << sizeof (pReal[channelOffset]) << " "
+                    << sizeof (pImag[channelOffset]) << std::endl;
+          // unsigned int
+          fwrite (&blockSize, sizeof (blockSize), 1, textIQFiles[countChannels]);
+          // double
+          fwrite (&IQResult.Fsample, sizeof (IQResult.Fsample), 1, textIQFiles[countChannels]);
+          // short
+          fwrite (&pScaling[countChannels], sizeof (pScaling[countChannels]), 1, textIQFiles[countChannels]);
+          // double
+          fwrite (&pReal[channelOffset], sizeof (pReal[channelOffset]), blockSize, textIQFiles[countChannels]);
+          // double
+          fwrite (&pImag[channelOffset], sizeof (pImag[channelOffset]), blockSize, textIQFiles[countChannels]);
+        } else {
+          for (unsigned int k = 0; k < blockSize; k++) {
+            fprintf (textIQFiles[countChannels], "%f;%hd;%d;%d\n",
+                     IQResult.Fsample, pScaling[countChannels],
+                     (int)pReal[channelOffset+k],(int)pImag[channelOffset+k]);
+          }
         }
       }
     }
