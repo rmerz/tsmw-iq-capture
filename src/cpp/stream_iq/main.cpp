@@ -338,7 +338,6 @@ main (int argc, char *argv[], char *envp[])
               std::cout   << "Number of blocks: " << CntBlock << std::endl;
             }
           } while (!_kbhit());
-          // delete OutBlock;
         } else {
           // Loop as long as no keyboard key is hit
           while (!_kbhit());
