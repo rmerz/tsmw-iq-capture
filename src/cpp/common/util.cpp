@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <ctime>
 
 void
 Util::printLastError (int ErrorCode)
@@ -63,6 +64,24 @@ Util::getNumberOfChannels (TSMW_IQIF_CH_CTRL_t *pChannelCtrl1,
   std::cout << "Total number of channels: " << NoOfChannels << "\n";
 
   return NoOfChannels;
+}
+
+void
+Util::kill (int ErrorCode)
+{
+  printLastError (ErrorCode);
+  releaseK1Interface ();
+  exit (-1);
+}
+
+void
+Util::waitForFrontendSync ()
+{
+    // Wait two seconds after connection establishment for frontend synchronization.
+    std::cout << "Wait 5 seconds for frontend synchronization\n";
+    clock_t trigger, seconds = 5;
+    trigger = seconds * CLOCKS_PER_SEC + clock ();
+    while (trigger > clock ());
 }
 
 double

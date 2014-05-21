@@ -5,8 +5,10 @@ class Util
 {
 public:
   void printLastError (int);
+  void waitForFrontendSync ();
   void loadK1Interface ();
   void releaseK1Interface ();
+  void kill (int);
 
   unsigned int getNumberOfChannels (TSMW_IQIF_CH_CTRL_t *,TSMW_IQIF_CH_CTRL_t *);
 
