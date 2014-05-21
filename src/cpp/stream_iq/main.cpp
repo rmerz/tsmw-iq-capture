@@ -311,7 +311,7 @@ main (int argc, char *argv[], char *envp[])
                                                  pCalibrated, Offset,
                                                  NoOfBlockSamples, NoOfChannels);
             if (ErrorCode == 0) {
-              std::cout << "Block " << CntBlock << " received\n";
+              std::cout << "Block " << CntBlock << " received: " << IQResult.NoOfSamples << "\n";
 
               // Display samples for each sub-channel
 

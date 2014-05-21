@@ -300,8 +300,8 @@ main (int argc, char *argv[], char *envp[])
     // std::cout << "Result parameters obtained\n";
     // std::cout << IQResult.MeasRequestID << ": " << IQResult.StartTimeIQ << " " << IQResult.Fsample << " " << IQResult.NoOfSamples << std::endl;
 
-  double* pReal = (double *) malloc (MeasCtrl.NoOfSamples*NoOfChannels*sizeof(long));
-  double* pImag = (double *) malloc (MeasCtrl.NoOfSamples*NoOfChannels*sizeof(long));
+  double* pReal = (double *) malloc (MeasCtrl.NoOfSamples*NoOfChannels*sizeof(double));
+  double* pImag = (double *) malloc (MeasCtrl.NoOfSamples*NoOfChannels*sizeof(double));
   short* pScaling = (short *) malloc (NoOfChannels*sizeof(short));
   unsigned long* pOverflow =  (unsigned long *) malloc (NoOfChannels*sizeof(unsigned long));
   unsigned int* pCalibrated = (unsigned int *) malloc (NoOfChannels*sizeof(unsigned int));
