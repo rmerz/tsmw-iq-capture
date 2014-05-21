@@ -40,6 +40,31 @@ Util::releaseK1Interface ()
   }
 }
 
+unsigned int
+Util::getNumberOfChannels (TSMW_IQIF_CH_CTRL_t *pChannelCtrl1,
+			   TSMW_IQIF_CH_CTRL_t *pChannelCtrl2)
+{
+  unsigned int NoOfChannels = 0;
+
+  if (pChannelCtrl1 == NULL) {
+    // Frontend 2 used only
+    NoOfChannels = pChannelCtrl2->NoOfChannels;
+    std::cout << "FE2 freq: " << pChannelCtrl2->Frequency << std::endl;
+  } else if (pChannelCtrl2 == NULL) {
+    // Frontend 1 used only
+    NoOfChannels = pChannelCtrl1->NoOfChannels;
+    std::cout << "FE1 freq: " << pChannelCtrl1->Frequency << std::endl;
+  } else {
+    // Both frontends used
+    NoOfChannels = pChannelCtrl1->NoOfChannels + pChannelCtrl2->NoOfChannels;
+    std::cout << "FE1 freq: " << pChannelCtrl1->Frequency << std::endl;
+    std::cout << "FE2 freq: " << pChannelCtrl2->Frequency << std::endl;
+  }
+  std::cout << "Total number of channels: " << NoOfChannels << "\n";
+
+  return NoOfChannels;
+}
+
 double
 Util::get_iq_power (short scaling, double real, double imag)
 {
