@@ -153,7 +153,7 @@ main (int argc, char *argv[], char *envp[])
   std::cout << "Preselectors: " << TSMWMode.AMPS_CH1 << " " << TSMWMode.AMPS_CH2 << "\n";
 
   TSMW_IQIF_MEAS_CTRL_t MeasCtrl;
-  MeasCtrl.NoOfSamples = 1; // Number of IQ samples to measure
+  MeasCtrl.NoOfSamples = options.block_length; // Number of IQ samples to measure
   MeasCtrl.FilterType = 1;  // Use userdefined filters (0 corresponds to pre-defined filters)
   MeasCtrl.FilterID = 1;    // Number of the filter that shall be used
   MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit / 2 is 12 Bit
@@ -227,7 +227,7 @@ main (int argc, char *argv[], char *envp[])
 
   unsigned __int64 Offset = 0;
  // Block size for processing: a too large value will cause a segfault
-  unsigned int NoOfBlockSamples = options.block_length;
+  // unsigned int NoOfBlockSamples = options.block_length;
 
   // Find out how many (sub-) channels are measured
   unsigned int NoOfChannels = util.getNumberOfChannels (pChannelCtrl1,
@@ -250,11 +250,11 @@ main (int argc, char *argv[], char *envp[])
   // vector as follows: [ (FE1 CH1) (FE1 CH2) (FE2 CH1) (FE2 CH2) (FE2
   // CH3) ] length: NoOfChannels * NoOfBlockSamples
   double* pReal;
-  pReal = (double*) malloc (NoOfChannels * NoOfBlockSamples * sizeof(double));
+  pReal = (double*) malloc (NoOfChannels * MeasCtrl.NoOfSamples * sizeof(double));
   double* pImag;
-  pImag = (double*) malloc (NoOfChannels * NoOfBlockSamples * sizeof(double));
+  pImag = (double*) malloc (NoOfChannels * MeasCtrl.NoOfSamples * sizeof(double));
 
-  std::cout << "Number of samples per block: " << NoOfBlockSamples << "\n";
+  std::cout << "Number of samples per block: " << MeasCtrl.NoOfSamples << "\n";
 
   // Initialize TSMW IQ Interface
   util.loadK1Interface ();
@@ -296,7 +296,7 @@ main (int argc, char *argv[], char *envp[])
             ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
                                                  pReal, pImag, pScaling, pOverFlow,
                                                  pCalibrated, Offset,
-                                                 NoOfBlockSamples, NoOfChannels);
+                                                 MeasCtrl.NoOfSamples, NoOfChannels);
             if (ErrorCode == 0) {
               std::cout << "Block " << CntBlock << " received: " << IQResult.NoOfSamples << "\n";
 
@@ -304,7 +304,7 @@ main (int argc, char *argv[], char *envp[])
 
               for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
                 // Sample offset between two successive channels
-                channel_offset = CntChannel*NoOfBlockSamples;
+                channel_offset = CntChannel*MeasCtrl.NoOfSamples;
                 std::cout << "Debug: " << channel_offset << std::endl;
                 std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
                           << " (first sample scaling,real,imag): "
@@ -325,7 +325,7 @@ main (int argc, char *argv[], char *envp[])
                 iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
                                                               &pReal[channel_offset],
                                                               &pImag[channel_offset],
-                                                              NoOfBlockSamples);
+                                                              MeasCtrl.NoOfSamples);
                 std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
                           << " (avg. IQ power): "
                           << iq_average_power << " dBm" << std::endl;
