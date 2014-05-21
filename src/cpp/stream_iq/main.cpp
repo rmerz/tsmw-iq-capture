@@ -230,21 +230,8 @@ main (int argc, char *argv[], char *envp[])
   unsigned int NoOfBlockSamples = options.block_length;
 
   // Find out how many (sub-) channels are measured
-  unsigned int NoOfChannels;
-  if (pChannelCtrl1 == NULL) {
-    // Frontend 2 used only
-    NoOfChannels = pChannelCtrl2->NoOfChannels;
-    std::cout << "FE2 freq: " << ChannelCtrl2.Frequency << std::endl;
-  } else if (pChannelCtrl2 == NULL) {
-    // Frontend 1 used only
-    NoOfChannels = pChannelCtrl1->NoOfChannels;
-    std::cout << "FE1 freq: " << ChannelCtrl1.Frequency << std::endl;
-  } else {
-    // Both frontends used
-    NoOfChannels = pChannelCtrl1->NoOfChannels + pChannelCtrl2->NoOfChannels;
-    std::cout << "FE1 freq: " << ChannelCtrl1.Frequency << std::endl;
-    std::cout << "FE2 freq: " << ChannelCtrl2.Frequency << std::endl;
-  }
+  unsigned int NoOfChannels = util.getNumberOfChannels (pChannelCtrl1,
+                                                        pChannelCtrl2);
   std::cout << "Total number of channels: " << NoOfChannels << "\n";
 
   TSMW_IQIF_STREAM_STATUS_t StreamStatus;
