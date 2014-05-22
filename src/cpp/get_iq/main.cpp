@@ -286,7 +286,7 @@ main (int argc, char *argv[], char *envp[])
   if (options.fileOutputFlag) {
     binary_trace = fopen (options.pFilename, "wb");
     // Header for binary format
-    sprintf_s (header, 512, "Header is %d bytes long. FE1 freq uint64 %u [1], FE2 freq uint64 %u [1],  blockSize uint %u [1], NoOfChannels uint %u [1]. For each block: block IQtimeStart uint64 %u [1], Fsample double %u [1], short scaling %u [NoOfChannels], double real %u [blockSize*NoOfChannels], double imag %u [blockSize*NoOfChannels]",
+    sprintf_s (header, 512, "Header is %d bytes long. FE1 freq uint64 %u [1], FE2 freq uint64 %u [1], NoOfChannels uint %u [1], blockSize uint %u [1]. For each block: block IQtimeStart uint64 %u [1], Fsample double %u [1], short scaling %u [NoOfChannels], double real %u [blockSize*NoOfChannels], double imag %u [blockSize*NoOfChannels]",
 	       sizeof (header),
 	       sizeof (ChannelCtrl1.Frequency),
 	       sizeof (ChannelCtrl2.Frequency),
