@@ -284,8 +284,7 @@ main (int argc, char *argv[], char *envp[])
       // parameters Passing a NULL vector for pChannelCtrl1 or
       // pChannelCtrl2 means that frontend 1 or frontend 2,
       // respectively shall NOT be used for streamimg.
-      ErrorCode = TSMWIQStream_c (TSMWID, &MeasCtrl, pChannelCtrl1, pChannelCtrl2, &StreamCtrl,
-                                  options.pFilename, options.pDescription, (unsigned int)1);
+      unsigned long MeasRequestID;
       if (ErrorCode == 0){
         std::cout << "Streaming started\n";
         std::cout << "Press any key to interrupt\n";
@@ -297,14 +296,16 @@ main (int argc, char *argv[], char *envp[])
           double iq_average_power = 0;
           unsigned int channel_offset = 0;
           do {
+	    ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID, NULL, 0,
+					 &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
             // Get streaming data, wait for a stream data block up to
             // TimeOut seconds This function will always deliver the
             // next NoOfBlockSamples I/Q samples (for
             // online-processing)
-            ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
-                                                 pReal, pImag, pScaling, pOverFlow,
-                                                 pCalibrated, Offset,
-                                                 MeasCtrl.NoOfSamples, NoOfChannels);
+            ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID, TimeOut, &IQResult,
+					       pReal, pImag, pScaling,
+					       pOverFlow, pCalibrated,
+					       MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
             if (ErrorCode == 0) {
               std::cout << "Block " << CntBlock << " received: " << IQResult.NoOfSamples << "\n";
 
