@@ -163,6 +163,7 @@ main (int argc, char *argv[], char *envp[])
   unsigned __int64 offset = 0;
 
   std::vector<FILE *> textIQFiles (numberOfChannels);
+  char header[256];
   if (options.saveToFile) {
     for (unsigned int k = 0; k < textIQFiles.size (); k++) {
       std::string filename = options.iq_file_location +
@@ -170,6 +171,19 @@ main (int argc, char *argv[], char *envp[])
       std::cout << filename << std::endl;
       if (options.binaryFormat) {
         textIQFiles[k] = fopen ((filename + std::string(".dat")).c_str (), "wb");
+        // Header for binary format
+        std::cout << "Binary mode: "
+                  << sizeof (blockSize) << " "
+                  << sizeof (IQResult.Fsample) << " "
+                  << sizeof (*pScaling) << " "
+                  << sizeof (*pReal) << " "
+                  << sizeof (*pImag) << std::endl;
+        sprintf_s (header, 256, "Header is %d bytes long. For each block: blockSize uint %u [1], Fsample double %u [1], short scaling %u [1], double real %u [blockSize], double imag %u [blockSize]",
+                   sizeof (header),
+                   sizeof (blockSize), sizeof (IQResult.Fsample), sizeof (*pScaling),
+                   sizeof (*pReal), sizeof (*pImag));
+        std::cout << header << std::endl;
+        fwrite (&header, sizeof (header), 1, textIQFiles[k]);
       } else {
         textIQFiles[k] = fopen ((filename + std::string(".csv")).c_str (), "w");
       }
