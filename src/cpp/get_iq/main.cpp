@@ -1,11 +1,13 @@
 /**
- * TSMW Project  TSMW IQ samples capture tool: get just one block
+ * TSMW Project  TSMW IQ sample capture tool
  *
  * @file         main.cpp
  * @abstract     TBD
  *
  * @copyright    (c) 2014 Swisscom AG, Bern, Schweiz
+ *               (c) 2008 Rohde & Schwarz GmbH & Co. KG, Munich
  * @author       Ruben Merz
+ *               Markus Herdin, Johannes Dommel, Hubert Willmann
  * @version
  *    May 2014
  *
@@ -36,7 +38,9 @@ public:
                           pDescription (NULL),
                           f1 (1000000000),
                           f2 (0),
-                          splitter (0)                          
+                          splitter (0),
+                          block_length (1000000)
+                          
   {}
 
   void parseCmd (int, char **);
@@ -48,6 +52,8 @@ public:
   (unsigned __int64) f1;
   (unsigned __int64) f2;
   unsigned int splitter;
+
+  (unsigned int) block_length;
 };
 
 void
@@ -66,6 +72,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string fe_splitter ("--splitter");
   std::string fe1_freq ("--fe1_freq");
   std::string fe2_freq ("--fe2_freq");
+  std::string block_length_opt ("--block_length");
   std::string help ("--help");
   std::string short_help ("-h");
 
@@ -80,6 +87,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
                 << "--fe1_freq [double]\tFrequency of frontend 1 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 1 (default is 1e9)\n"
                 << "--fe2_freq [double]\tFrequency of frontend 2 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 2 (default is 0 e.g inactive)\n"
                 << "--splitter\tActivate splitter from FE1 to FE2 (default is inactive)\n"
+                << "--block_length\tSize in bits of the measurement blocks (default is 1e6)\n"
                 << "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
     }
@@ -120,6 +128,12 @@ CaptureOptions::parseCmd (int argc, char *argv[])
       f2 = (unsigned __int64)atof (argv[count]);
       valid = true;
     }
+    if (block_length_opt.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      block_length = (unsigned int)atof (argv[count]);
+      valid = true;
+    }
     if (valid == false) {
       std::cerr << "Invalid option: " << argv[count] << std::endl;
       exit (-1);
@@ -147,9 +161,8 @@ main (int argc, char *argv[], char *envp[])
   std::cout << "Preselectors: " << TSMWMode.AMPS_CH1 << " " << TSMWMode.AMPS_CH2 << "\n";
 
   TSMW_IQIF_MEAS_CTRL_t MeasCtrl;
-  TSMW_IQIF_MEAS_CTRL_t *pMeasCtrl = &MeasCtrl;
-  MeasCtrl.NoOfSamples = 48000; // Number of IQ samples to measure
-  MeasCtrl.FilterType = 0;  // Use userdefined filters (0 corresponds to pre-defined filters)
+  MeasCtrl.NoOfSamples = options.block_length; // Number of IQ samples to measure
+  MeasCtrl.FilterType = 1;  // Use userdefined filters (0 corresponds to pre-defined filters)
   MeasCtrl.FilterID = 1;    // Number of the filter that shall be used
   MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit / 2 is 12 Bit
   MeasCtrl.AttStrategy = 0; // Attenuation strategy, currently unused, shall be set to zero
@@ -159,7 +172,6 @@ main (int argc, char *argv[], char *envp[])
                                         // both frontends)
   MeasCtrl.Priority = 15;   // Relative priority, Valid range: 0 .. 15, 15 highest
 
-  std::cout << "Number of samples requested: " << MeasCtrl.NoOfSamples << std::endl;
 
   TSMW_IQIF_CH_CTRL_t ChannelCtrl1;
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl1 = &ChannelCtrl1;
@@ -203,111 +215,166 @@ main (int argc, char *argv[], char *envp[])
   ChannelCtrl2.BlockSkip = 0; // Reserved
   ChannelCtrl2.DigIqOnOff = 0;
 
+  TSMW_IQIF_STREAM_CTRL_t StreamCtrl;
+  StreamCtrl.StreamID = 0;           // Stream ID, valid range: 0..15
+  StreamCtrl.StreamBufferSize = 200; // Buffer size for streaming in
+                                     // MBytes, a minimum of 200MB is
+                                     // recommended
+  StreamCtrl.MaxStreamSize = 4000;   // Maximum streaming size in MBytes.
+ 
   if (options.f1 == 0) {
-      // Disable frontend 1
+      // Disable frontend 1 only
     pChannelCtrl1 = NULL;
   }
   if (options.f2 == 0) {
-      // Disable frontend 2
+      // Disable frontend 2 only
     pChannelCtrl2 = NULL;
   }
+
+  unsigned int TimeOut = 10000; // in ms
+
+  unsigned __int64 Offset = 0;
+ // Block size for processing: a too large value will cause a segfault
+  // unsigned int NoOfBlockSamples = options.block_length;
+
   // Find out how many (sub-) channels are measured
-  unsigned int NoOfChannels = util.getNumberOfChannels (pChannelCtrl1,pChannelCtrl2);
-  std::cout << "Number of channels: " << NoOfChannels << std::endl;
+  unsigned int NoOfChannels = util.getNumberOfChannels (pChannelCtrl1,
+                                                        pChannelCtrl2);
+  std::cout << "Total number of channels: " << NoOfChannels << "\n";
+
+  TSMW_IQIF_STREAM_STATUS_t StreamStatus;
+  TSMW_IQIF_RESULT_t IQResult;
+  // Create array of variables receiving scaling, overflow and
+  // calibrated information from interface when requesting I/Q data.
+  short *pScaling = (short*) malloc(NoOfChannels * sizeof(short));
+  unsigned long *pOverFlow = (unsigned long*) malloc(NoOfChannels * sizeof(unsigned long));
+  unsigned int *pCalibrated = (unsigned int*) malloc(NoOfChannels * sizeof(unsigned int));
+
+  // The output samples of different frontends / sub-channels are
+  // delivered in a single vector.  The order is data of first
+  // sub-channel of first frontend, data of second sub-channel of
+  // second channel etc e.g. streaming on frontend 1 (FE1) with 2
+  // channels (CH1, CH2) and on frontend 2 with 3 channels gives a
+  // vector as follows: [ (FE1 CH1) (FE1 CH2) (FE2 CH1) (FE2 CH2) (FE2
+  // CH3) ] length: NoOfChannels * NoOfBlockSamples
+  double* pReal;
+  pReal = (double*) malloc (NoOfChannels * MeasCtrl.NoOfSamples * sizeof(double));
+  double* pImag;
+  pImag = (double*) malloc (NoOfChannels * MeasCtrl.NoOfSamples * sizeof(double));
+
+  std::cout << "Number of samples per block: " << MeasCtrl.NoOfSamples << "\n";
 
   // Initialize TSMW IQ Interface
   util.loadK1Interface ();
 
   // Connect to TSMW
-  unsigned int timeOut = 10000; // in ms
   ErrorCode = TSMWConnect_c (IPAddress, &TSMWMode, &TSMWID);
-  if (ErrorCode != 0) {
-    util.printLastError (ErrorCode);
-    exit (-1);
-  }
-  std::cout << "Connected to " << TSMWID << std::endl;
-  util.waitForFrontendSync ();
+  if (ErrorCode == 0) {
 
-  // ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
-  // if (ErrorCode != 0) {
-  //   util.kill (ErrorCode);
-  // }
-  // std::cout << "Filter set" << std::endl;
+    std::cout << "Connected\n";
 
-  unsigned long MeasRequestID;
-  unsigned __int64 *pStartTimes = (unsigned __int64*) malloc (sizeof (unsigned __int64));
-  // ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID, pStartTimes, 0,
-  // 			       pMeasCtrl,pChannelCtrl1,pChannelCtrl2);
-  TSMW_IQIF_TRIG_CTRL_t TriggerParam;
-  TSMW_IQIF_TRIG_CTRL_t *pTriggerParam = &TriggerParam;
-  TriggerParam.Cmd = 0;                   // 0: Start triggering (when used in TSMWIQMeasureTrig command)
-                                           // 1: Stop triggered measurement
-                                           // 2: Change attenuator and preamp setting
-  TriggerParam.Mode = 0;                  // Trigger mode, has to be zero
-  TriggerParam.Falling = 0;               // Trigger edge, 0: rising, 1: falling
-  TriggerParam.TriggerLine = 3;           // 1: Use trigger input 1
-                                           // 2: Use trigger input 2
-                                           // 3: Trigger on both inputs
-  //TriggerParam.MeasRequestID;         // Meas.request ID of period. meas.req., only used when changing
-                                           // parameters of a triggered measurement
-  //TriggerParam.Att[2];                // New attenuator setting for each channel (only used when Cmd == 2)
-  //TriggerParam..Preamp[2];             // New preamp setting for each channel (only used when Cmd == 2)
+    util.waitForFrontendSync ();
 
-  ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID, pStartTimes, 0,
-				   pMeasCtrl,pChannelCtrl1,pChannelCtrl2,
-				   pTriggerParam);
-  if (ErrorCode != 0) {
-    util.kill (ErrorCode);
-  }
-  std::cout << "Measurement " << MeasRequestID << " configured" << std::endl;
+    // Send user-specific resampling filter to TSMW
+    //ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
+    ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
+    if (ErrorCode == 0) {
+      std::cout << "Filter set\n";
+      // Start streaming with predefined measurement and streaming
+      // parameters Passing a NULL vector for pChannelCtrl1 or
+      // pChannelCtrl2 means that frontend 1 or frontend 2,
+      // respectively shall NOT be used for streamimg.
+      ErrorCode = TSMWIQStream_c (TSMWID, &MeasCtrl, pChannelCtrl1, pChannelCtrl2, &StreamCtrl,
+                                  options.pFilename, options.pDescription, (unsigned int)1);
+      if (ErrorCode == 0){
+        std::cout << "Streaming started\n";
+        std::cout << "Press any key to interrupt\n";
 
-  long NoOfIQResults;
-  TSMW_IQIF_RESULT_t IQResult;
-  do {
-    // ErrorCode = TSMWIQGetResultParam_c (0,timeOut,&IQResult);
-    // if (ErrorCode != 0) {
-    //   util.kill (ErrorCode);
-    // }
-    // std::cout << "Result parameters, request " << IQResult.MeasRequestID << ": " << IQResult.NoOfSamples << std::endl;
+        if (options.pFilename == NULL) {
+          // Continuously get and process streaming data until key pressed
+          unsigned int CntBlock = 0;
+          double iq_power = 0;
+          double iq_average_power = 0;
+          unsigned int channel_offset = 0;
+          do {
+            // Get streaming data, wait for a stream data block up to
+            // TimeOut seconds This function will always deliver the
+            // next NoOfBlockSamples I/Q samples (for
+            // online-processing)
+            ErrorCode = TSMWIQGetStreamDouble_c ((unsigned char)StreamCtrl.StreamID, TimeOut, &IQResult,
+                                                 pReal, pImag, pScaling, pOverFlow,
+                                                 pCalibrated, Offset,
+                                                 MeasCtrl.NoOfSamples, NoOfChannels);
+            if (ErrorCode == 0) {
+              std::cout << "Block " << CntBlock << " received: " << IQResult.NoOfSamples << "\n";
 
-    // Returns the number of measurement results available (and not the number of samples)
-    ErrorCode = TSMWIQDataAvailable_c (&NoOfIQResults);
-    if (ErrorCode != 0) {
-      util.kill (ErrorCode);
+              // Display samples for each sub-channel
+
+              for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
+                // Sample offset between two successive channels
+                channel_offset = CntChannel*MeasCtrl.NoOfSamples;
+                std::cout << "Debug: " << channel_offset << std::endl;
+                std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+                          << " (first sample scaling,real,imag): "
+                          << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
+                          << std::endl;
+
+                iq_power = util.get_iq_power (pScaling[CntChannel],
+                                              pReal[channel_offset],
+                                              pImag[channel_offset]);
+                std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+                          << " (first sample IQ power): "
+                          << iq_power << " dBm" << std::endl;
+
+                if (pOverFlow[CntChannel] > 0)
+                  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
+
+                // Average power over all samples
+                iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
+                                                              &pReal[channel_offset],
+                                                              &pImag[channel_offset],
+                                                              MeasCtrl.NoOfSamples);
+                std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+                          << " (avg. IQ power): "
+                          << iq_average_power << " dBm" << std::endl;
+              }
+            } else {
+              util.printLastError (ErrorCode);
+            }
+            CntBlock = CntBlock + 1;
+            if (_kbhit()) {
+              std::cout   << "Number of blocks: " << CntBlock << std::endl;
+            }
+          } while (!_kbhit());
+        } else {
+          // Loop as long as no keyboard key is hit
+          while (!_kbhit());
+        }
+
+        // Stop streaming
+        ErrorCode = TSMWIQStopStreaming_c ( TSMWID, (unsigned char)StreamCtrl.StreamID, &StreamStatus);
+        if ( ErrorCode == 0 ){
+          std::cout << "Streaming stopped\n";
+        } else {
+          util.printLastError (ErrorCode);
+        }
+      } else {
+        util.printLastError (ErrorCode);
+      }
+    } else {
+      util.printLastError (ErrorCode);
     }
-    std::cout << "Number of results available: " << NoOfIQResults << std::endl;
-
-  } while (NoOfIQResults == 0);
-
-  unsigned int NoOfSamples = MeasCtrl.NoOfSamples;
-  double* pReal = (double*) malloc (NoOfChannels * NoOfSamples * sizeof(double));
-  double* pImag = (double*) malloc (NoOfChannels * NoOfSamples * sizeof(double));
-  short* pScaling = (short*) malloc(NoOfChannels * sizeof(short));
-  unsigned long* pOvfl = (unsigned long*) malloc(NoOfChannels * sizeof(unsigned long));
-  unsigned int *pCalibrated = (unsigned int*) malloc(NoOfChannels * sizeof(unsigned int));
-
-  ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID, timeOut, &IQResult,
-				     pReal,
-				     pImag,
-				     pScaling,
-				     pOvfl,
-				     pCalibrated,
-				     1, NoOfChannels,
-				     0, 0);
-  if (ErrorCode != 0) {
-    util.kill (ErrorCode);
+  } else {
+    util.printLastError (ErrorCode);
   }
-
-  ErrorCode = TSMWIQGetResultParam_c (0,timeOut,&IQResult);
-  if (ErrorCode != 0) {
-    util.kill (ErrorCode);
-  }
-  std::cout << IQResult.MeasRequestID << " "
-	    << IQResult.StartTimeIQ << " "
-	    << IQResult.StartTimeHost << " "
-	    << IQResult.Fsample << " "
-	    << IQResult.NoOfSamples << std::endl;
 
   util.releaseK1Interface ();
+
+  // while (_kbhit()) {
+  //   char ch = _getch();
+  // }
+  // std::cout << "Press any key to quit program\n";
+  // while(!_kbhit());
+
   return (0);
 }
