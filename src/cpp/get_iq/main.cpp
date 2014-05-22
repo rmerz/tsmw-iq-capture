@@ -279,7 +279,7 @@ main (int argc, char *argv[], char *envp[])
   double* pImag;
   pImag = (double*) malloc (NoOfChannels * MeasCtrl.NoOfSamples * sizeof(double));
 
-  printf ("Number of samples per block: %ud\n", MeasCtrl.NoOfSamples);
+  printf ("Number of samples per block: %u\n", MeasCtrl.NoOfSamples);
 
   // Initialize TSMW IQ Interface
   util.loadK1Interface ();
