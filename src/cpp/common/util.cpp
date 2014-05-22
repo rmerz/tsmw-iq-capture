@@ -78,8 +78,8 @@ void
 Util::waitForFrontendSync ()
 {
     // Wait two seconds after connection establishment for frontend synchronization.
-    std::cout << "Wait 5 seconds for frontend synchronization\n";
-    clock_t trigger, seconds = 5;
+    std::cout << "Wait 2 seconds for frontend synchronization\n";
+    clock_t trigger, seconds = 2;
     trigger = seconds * CLOCKS_PER_SEC + clock ();
     while (trigger > clock ());
 }
