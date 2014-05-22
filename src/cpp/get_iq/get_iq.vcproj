@@ -195,11 +195,11 @@
         UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
         >
       <File
-          RelativePath=".\include\Filter_10MHz.h"
+          RelativePath="..\include\Filter_10MHz.h"
           >
       </File>
       <File
-          RelativePath=".\include\Filter_1MHz.h"
+          RelativePath="..\include\Filter_1MHz.h"
           >
       </File>
       <File
