@@ -242,7 +242,6 @@ main (int argc, char *argv[], char *envp[])
                                                         pChannelCtrl2);
   std::cout << "Total number of channels: " << NoOfChannels << "\n";
 
-  TSMW_IQIF_STREAM_STATUS_t StreamStatus;
   TSMW_IQIF_RESULT_t IQResult;
   // Create array of variables receiving scaling, overflow and
   // calibrated information from interface when requesting I/Q data.
@@ -280,88 +279,68 @@ main (int argc, char *argv[], char *envp[])
     ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
     if (ErrorCode == 0) {
       std::cout << "Filter set\n";
-      // Start streaming with predefined measurement and streaming
-      // parameters Passing a NULL vector for pChannelCtrl1 or
-      // pChannelCtrl2 means that frontend 1 or frontend 2,
-      // respectively shall NOT be used for streamimg.
+
+      std::cout << "Entering measurement loop\n";
+      std::cout << "Press any key to interrupt\n";
+
       unsigned long MeasRequestID;
-      if (ErrorCode == 0){
-        std::cout << "Streaming started\n";
-        std::cout << "Press any key to interrupt\n";
 
-        if (options.pFilename == NULL) {
-          // Continuously get and process streaming data until key pressed
-          unsigned int CntBlock = 0;
-          double iq_power = 0;
-          double iq_average_power = 0;
-          unsigned int channel_offset = 0;
-          do {
-	    ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID, NULL, 0,
-					 &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
-            // Get streaming data, wait for a stream data block up to
-            // TimeOut seconds This function will always deliver the
-            // next NoOfBlockSamples I/Q samples (for
-            // online-processing)
-            ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID, TimeOut, &IQResult,
-					       pReal, pImag, pScaling,
-					       pOverFlow, pCalibrated,
-					       MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
-            if (ErrorCode == 0) {
-              std::cout << "Block " << CntBlock << " received: " << IQResult.NoOfSamples << "\n";
+      // Continuously get and process streaming data until key pressed
+      unsigned int CntBlock = 0;
+      double iq_power = 0;
+      double iq_average_power = 0;
+      unsigned int channel_offset = 0;
+      do {
+	// Schedule measurement
+	ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID, NULL, 0,
+				     &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+	// Get streaming data, wait for a stream data block up to
+	// TimeOut seconds This function will always deliver the
+	// next NoOfBlockSamples I/Q samples (for
+	// online-processing)
+	ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID, TimeOut, &IQResult,
+					   pReal, pImag, pScaling,
+					   pOverFlow, pCalibrated,
+					   MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
+	if (ErrorCode == 0) {
+	  std::cout << "Block " << CntBlock << " received: " << IQResult.NoOfSamples << "\n";
 
-              // Display samples for each sub-channel
+	  // Display samples for each sub-channel
+	  for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
+	    // Sample offset between two successive channels
+	    channel_offset = CntChannel*MeasCtrl.NoOfSamples;
+	    std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+		      << " (first sample scaling,real,imag): "
+		      << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
+		      << std::endl;
 
-              for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
-                // Sample offset between two successive channels
-                channel_offset = CntChannel*MeasCtrl.NoOfSamples;
-                std::cout << "Debug: " << channel_offset << std::endl;
-                std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
-                          << " (first sample scaling,real,imag): "
-                          << pScaling[CntChannel] << " " << pReal[channel_offset] << " " << pImag[channel_offset]
-                          << std::endl;
+	    iq_power = util.get_iq_power (pScaling[CntChannel],
+					  pReal[channel_offset],
+					  pImag[channel_offset]);
+	    std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+		      << " (first sample IQ power): "
+		      << iq_power << " dBm" << std::endl;
 
-                iq_power = util.get_iq_power (pScaling[CntChannel],
-                                              pReal[channel_offset],
-                                              pImag[channel_offset]);
-                std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
-                          << " (first sample IQ power): "
-                          << iq_power << " dBm" << std::endl;
+	    if (pOverFlow[CntChannel] > 0)
+	      std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
 
-                if (pOverFlow[CntChannel] > 0)
-                  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
-
-                // Average power over all samples
-                iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
-                                                              &pReal[channel_offset],
-                                                              &pImag[channel_offset],
-                                                              MeasCtrl.NoOfSamples);
-                std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
-                          << " (avg. IQ power): "
-                          << iq_average_power << " dBm" << std::endl;
-              }
-            } else {
-              util.printLastError (ErrorCode);
-            }
-            CntBlock = CntBlock + 1;
-            if (_kbhit()) {
-              std::cout   << "Number of blocks: " << CntBlock << std::endl;
-            }
-          } while (!_kbhit());
-        } else {
-          // Loop as long as no keyboard key is hit
-          while (!_kbhit());
-        }
-
-        // Stop streaming
-        ErrorCode = TSMWIQStopStreaming_c ( TSMWID, (unsigned char)StreamCtrl.StreamID, &StreamStatus);
-        if ( ErrorCode == 0 ){
-          std::cout << "Streaming stopped\n";
-        } else {
-          util.printLastError (ErrorCode);
-        }
-      } else {
-        util.printLastError (ErrorCode);
-      }
+	    // Average power over all samples
+	    iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
+							  &pReal[channel_offset],
+							  &pImag[channel_offset],
+							  MeasCtrl.NoOfSamples);
+	    std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
+		      << " (avg. IQ power): "
+		      << iq_average_power << " dBm" << std::endl;
+	  }
+	  CntBlock = CntBlock + 1;
+	  if (_kbhit()) {
+	    std::cout   << "Number of blocks: " << CntBlock << std::endl;
+	  }
+	} else {
+	  util.printLastError (ErrorCode);
+	}
+      } while (!_kbhit());
     } else {
       util.printLastError (ErrorCode);
     }
@@ -370,12 +349,6 @@ main (int argc, char *argv[], char *envp[])
   }
 
   util.releaseK1Interface ();
-
-  // while (_kbhit()) {
-  //   char ch = _getch();
-  // }
-  // std::cout << "Press any key to quit program\n";
-  // while(!_kbhit());
 
   return (0);
 }
