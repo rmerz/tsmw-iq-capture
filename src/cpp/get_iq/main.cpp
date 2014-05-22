@@ -281,6 +281,29 @@ main (int argc, char *argv[], char *envp[])
 
   printf ("Number of samples per block: %u\n", MeasCtrl.NoOfSamples);
 
+  char header[512];
+  FILE * binary_trace;
+  if (options.fileOutputFlag) {
+    binary_trace = fopen (options.pFilename, "wb");
+    // Header for binary format
+    sprintf_s (header, 512, "Header is %d bytes long. FE1 freq uint64 %u [1], FE2 freq uint64 %u [1],  blockSize uint %u [1], NoOfChannels uint %u [1]. For each block: block IQtimeStart uint64 %u [1], Fsample double %u [1], short scaling %u [NoOfChannels], double real %u [blockSize*NoOfChannels], double imag %u [blockSize*NoOfChannels]",
+	       sizeof (header),
+	       sizeof (ChannelCtrl1.Frequency),
+	       sizeof (ChannelCtrl2.Frequency),
+	       sizeof (NoOfChannels),
+	       sizeof (MeasCtrl.NoOfSamples),
+	       sizeof (IQResult.StartTimeIQ),
+	       sizeof (IQResult.Fsample),
+	       sizeof (*pScaling),
+	       sizeof (*pReal), sizeof (*pImag));
+    printf ("Header for binary trace: %s\n", header);
+    fwrite (&header, sizeof (header), 1, binary_trace);
+    fwrite (&ChannelCtrl1.Frequency, sizeof (ChannelCtrl1.Frequency), 1, binary_trace);
+    fwrite (&ChannelCtrl2.Frequency, sizeof (ChannelCtrl2.Frequency), 1, binary_trace);
+    fwrite (&NoOfChannels, sizeof (NoOfChannels), 1, binary_trace);
+    fwrite (&MeasCtrl.NoOfSamples, sizeof (MeasCtrl.NoOfSamples), 1, binary_trace);
+  }
+
   // Initialize TSMW IQ Interface
   util.loadK1Interface ();
 
@@ -352,6 +375,14 @@ main (int argc, char *argv[], char *envp[])
 		      iq_average_power);
 	    }
 	  }
+	  if (options.fileOutputFlag) {
+	    fwrite (&IQResult.StartTimeIQ, sizeof (IQResult.StartTimeIQ), 1, binary_trace);
+	    fwrite (&IQResult.Fsample, sizeof (IQResult.Fsample), 1, binary_trace);
+	    fwrite (pScaling, sizeof (*pScaling), NoOfChannels, binary_trace);
+	    fwrite (&pReal, sizeof (*pReal), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
+	    fwrite (&pImag, sizeof (*pImag), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
+	  }
+
 	} else {
 	  util.printLastError (ErrorCode);
 	}
@@ -359,6 +390,9 @@ main (int argc, char *argv[], char *envp[])
 	  break;
       } while (!_kbhit());
       printf ("Number of blocks: %u\n",CntBlock);
+      if (options.fileOutputFlag) {
+	fclose (binary_trace);
+      }
     } else {
       util.printLastError (ErrorCode);
     }
