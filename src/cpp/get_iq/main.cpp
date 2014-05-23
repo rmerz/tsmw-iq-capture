@@ -379,8 +379,8 @@ main (int argc, char *argv[], char *envp[])
 	    fwrite (&IQResult.StartTimeIQ, sizeof (IQResult.StartTimeIQ), 1, binary_trace);
 	    fwrite (&IQResult.Fsample, sizeof (IQResult.Fsample), 1, binary_trace);
 	    fwrite (pScaling, sizeof (*pScaling), NoOfChannels, binary_trace);
-	    fwrite (&pReal, sizeof (*pReal), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
-	    fwrite (&pImag, sizeof (*pImag), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
+	    fwrite (pReal, sizeof (*pReal), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
+	    fwrite (pImag, sizeof (*pImag), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
 	  }
 
 	} else {
