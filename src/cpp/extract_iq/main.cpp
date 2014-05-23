@@ -248,9 +248,9 @@ main (int argc, char *argv[], char *envp[])
           fwrite (&pImag[channelOffset], sizeof (pImag[channelOffset]), blockSize, textIQFiles[countChannels]);
         } else {
           for (unsigned int k = 0; k < blockSize; k++) {
-            fprintf (textIQFiles[countChannels], "%f;%hd;%d;%d\n",
+            fprintf (textIQFiles[countChannels], "%f;%hd;%f;%f\n",
                      IQResult.Fsample, pScaling[countChannels],
-                     (int)pReal[channelOffset+k],(int)pImag[channelOffset+k]);
+                     pReal[channelOffset+k],pImag[channelOffset+k]);
           }
         }
       }
