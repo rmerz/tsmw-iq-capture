@@ -67,8 +67,9 @@ def main (args):
 
     # f, Pxx_den = signal.periodogram(real_scaled+np.complex(0,1)*imag_scaled, nfft=2048)
     f, Pxx_den = signal.welch(real_scaled+np.complex(0,1)*imag_scaled,
-                              # fs = sample_rate,
-                              scaling='spectrum',
+                              fs = sample_rate,
+                              scaling='density',
+                              #scaling='spectrum',
                               nperseg=4096)
 
     plt.ion ()
