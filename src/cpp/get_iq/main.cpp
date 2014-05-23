@@ -37,6 +37,7 @@ public:
                           pFilename (NULL),
                           pDescription (NULL),
 			  verbose (false),
+			  trigger (false),
                           f1 (1000000000),
                           f2 (0),
                           splitter (0),
@@ -51,6 +52,7 @@ public:
   char* pFilename;
   char* pDescription;
   bool verbose;
+  bool trigger;
 
   (unsigned __int64) f1;
   (unsigned __int64) f2;
@@ -81,6 +83,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string short_help ("-h");
   std::string verbose_opt ("-v");
   std::string block_opt ("-n");
+  std::string trigger_opt ("-t");
 
   for (int count = 1; count < argc; count++) {
     // std::cout << "  argv[" << count << "]   "
@@ -96,6 +99,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
                 << "--splitter [1|0]\tActivate splitter from FE1 to FE2 (default is inactive)\n"
                 << "--block_length [INT]\tSize in bits of the measurement blocks (default is 1e6)\n"
                 << "--n [UINT]\tMax. number of blocks to capture (default is unlimited)\n"
+                << "--t\t\tActive external trigger mode (default is inactive)\n"
                 << "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
     }
@@ -132,6 +136,10 @@ CaptureOptions::parseCmd (int argc, char *argv[])
     }
     if (fe_splitter.compare (argv[count]) == 0) {
       splitter = 1;
+      valid = true;
+    }
+    if (trigger_opt.compare (argv[count]) == 0) {
+      trigger = true;
       valid = true;
     }
     if (fe1_freq.compare (argv[count]) == 0) {
@@ -281,6 +289,27 @@ main (int argc, char *argv[], char *envp[])
 
   printf ("Number of samples per block: %u\n", MeasCtrl.NoOfSamples);
 
+  TSMW_IQIF_TRIG_CTRL_t TriggerParam;
+  TSMW_IQIF_TRIG_CTRL_t *pTriggerParam = &TriggerParam;
+  if (options.trigger) {
+    printf ("Trigger mode configuration\n");
+    TriggerParam.Cmd = 0;  // 0: Start triggering (when used in TSMWIQMeasureTrig command)
+                           // 1: Stop triggered measurement
+                           // 2: Change attenuator and preamp setting
+    TriggerParam.Mode = 0; // Trigger mode, has to be zero
+    TriggerParam.Falling = 0; // Trigger edge, 0: rising, 1: falling
+    TriggerParam.TriggerLine = 3; // 1: Use trigger input 1
+                                  // 2: Use trigger input 2
+                                  // 3: Trigger on both inputs
+    TriggerParam.MeasRequestID;  // Meas.request ID of
+                                 // period. meas.req., only used
+                                 // when parameters of a triggered
+                                 // measurement
+    TriggerParam.Att[2]; // New attenuator setting for each channel (only used when Cmd == 2)
+    TriggerParam.Preamp[2]; // New preamp setting for each channel
+                            // (only used when Cmd == 2)
+  }
+
   char header[512];
   FILE * binary_trace;
   if (options.fileOutputFlag) {
@@ -334,8 +363,14 @@ main (int argc, char *argv[], char *envp[])
       do {
 	CntBlock = CntBlock + 1;
 	// Schedule measurement
-	ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID, NULL, 0,
-				     &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+	if (options.trigger) {
+	  ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID, NULL, 0,
+					   &MeasCtrl, pChannelCtrl1, pChannelCtrl2,
+					   pTriggerParam);
+	} else {
+	  ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID, NULL, 0,
+				       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+	}
 	// Get data for MeasRequestID, wait for a data block up to
 	// TimeOut seconds
 	ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID, TimeOut, &IQResult,
@@ -344,9 +379,10 @@ main (int argc, char *argv[], char *envp[])
 					   MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
 	if (ErrorCode == 0) {
 	  // printf ("Block %d received: %u\n",CntBlock,IQResult.NoOfSamples);
-	  printf ("Block %d received\n",CntBlock);
+	  // printf ("Block %d received\n",CntBlock);
 
 	  if (options.verbose) {
+	    printf ("Block %d received\n",CntBlock);
 	    // Display samples for each sub-channel
 	    for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
 	      // Sample offset between two successive channels
