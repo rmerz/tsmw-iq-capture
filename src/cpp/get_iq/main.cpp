@@ -341,7 +341,7 @@ main (int argc, char *argv[], char *envp[])
     //ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
     ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
     if (ErrorCode == 0) {
-      printf ("Filter set");
+      printf ("Filter set\n");
 
       printf ("Entering measurement loop\n");
       printf ("Press any key to interrupt\n");
