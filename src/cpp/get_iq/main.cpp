@@ -90,7 +90,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
     //        << argv[count] << "\n";
     valid = false;
     if (help.compare (argv[count]) == 0 || short_help.compare (argv[count]) == 0) {
-      std::cout << "-f\t\tWrite IQ stream to file\n"
+      std::cout << "-f\t\tWrite IQ measurement blocks to file\n"
 		<< "-v\t\tVerbose mode: print IQ samples summary\n"
                 << "--filename [string]\tSpecify file name to write IQ samples (default is iq_data.dat)\n"
                 << "--description [string]\tSpecify description to attach with IQ samples capture (default is n/a)\n"
@@ -240,13 +240,6 @@ main (int argc, char *argv[], char *envp[])
   ChannelCtrl2.BlockSize = 0; // Reserved
   ChannelCtrl2.BlockSkip = 0; // Reserved
   ChannelCtrl2.DigIqOnOff = 0;
-
-  TSMW_IQIF_STREAM_CTRL_t StreamCtrl;
-  StreamCtrl.StreamID = 0;           // Stream ID, valid range: 0..15
-  StreamCtrl.StreamBufferSize = 200; // Buffer size for streaming in
-                                     // MBytes, a minimum of 200MB is
-                                     // recommended
-  StreamCtrl.MaxStreamSize = 4000;   // Maximum streaming size in MBytes.
  
   if (options.f1 == 0) {
       // Disable frontend 1 only
@@ -278,7 +271,7 @@ main (int argc, char *argv[], char *envp[])
   // The output samples of different frontends / sub-channels are
   // delivered in a single vector.  The order is data of first
   // sub-channel of first frontend, data of second sub-channel of
-  // second channel etc e.g. streaming on frontend 1 (FE1) with 2
+  // second channel etc e.g. on frontend 1 (FE1) with 2
   // channels (CH1, CH2) and on frontend 2 with 3 channels gives a
   // vector as follows: [ (FE1 CH1) (FE1 CH2) (FE2 CH1) (FE2 CH2) (FE2
   // CH3) ] length: NoOfChannels * NoOfBlockSamples
@@ -355,7 +348,7 @@ main (int argc, char *argv[], char *envp[])
 
       unsigned long MeasRequestID;
 
-      // Continuously get and process streaming data until key pressed
+      // Continuously get and process data until key pressed
       unsigned int CntBlock = 0;
       double iq_power = 0;
       double iq_average_power = 0;
