@@ -98,8 +98,8 @@ CaptureOptions::parseCmd (int argc, char *argv[])
                 << "--fe2_freq [double]\tFrequency of frontend 2 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 2 (default is 0 e.g inactive)\n"
                 << "--splitter [1|0]\tActivate splitter from FE1 to FE2 (default is inactive)\n"
                 << "--block_length [INT]\tSize in bits of the measurement blocks (default is 1e6)\n"
-                << "--n [UINT]\tMax. number of blocks to capture (default is unlimited)\n"
-                << "--t\t\tActive external trigger mode (default is inactive)\n"
+                << "-n [UINT]\tMax. number of blocks to capture (default is unlimited)\n"
+                << "-t\t\tActive external trigger mode (default is inactive)\n"
                 << "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
     }
