@@ -68,11 +68,12 @@ def main (args):
     # f, Pxx_den = signal.periodogram(real_scaled+np.complex(0,1)*imag_scaled, nfft=2048)
     f, Pxx_den = signal.welch(real_scaled+np.complex(0,1)*imag_scaled,
                               # fs = sample_rate,
+                              scaling='spectrum',
                               nperseg=4096)
 
     plt.ion ()
-    plt.semilogy (f, Pxx_den)
-    plt.ylim ([1e-11, 1e-5])
+    plt.plot (f, 10*np.log10 (Pxx_den))
+    # plt.ylim ([1e-11, 1e-5])
     plt.grid (True)
     plt.tight_layout ()
     input ('Press any key.')
