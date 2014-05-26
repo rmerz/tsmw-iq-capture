@@ -36,13 +36,13 @@ public:
   CaptureOptions (void) : fileOutputFlag (false),
                           pFilename (NULL),
                           pDescription (NULL),
-			  verbose (false),
-			  trigger (false),
+                          verbose (false),
+                          trigger (false),
                           f1 (1000000000),
                           f2 (0),
                           splitter (0),
                           block_length (1000000),
-			  max_number_of_blocks (UINT_MAX)
+                          max_number_of_blocks (UINT_MAX)
                           
   {}
 
@@ -91,7 +91,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
     valid = false;
     if (help.compare (argv[count]) == 0 || short_help.compare (argv[count]) == 0) {
       std::cout << "-f\t\tWrite IQ measurement blocks to file\n"
-		<< "-v\t\tVerbose mode: print IQ samples summary\n"
+                << "-v\t\tVerbose mode: print IQ samples summary\n"
                 << "--filename [string]\tSpecify file name to write IQ samples (default is iq_data.dat)\n"
                 << "--description [string]\tSpecify description to attach with IQ samples capture (default is n/a)\n"
                 << "--fe1_freq [double]\tFrequency of frontend 1 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 1 (default is 1e9)\n"
@@ -309,15 +309,15 @@ main (int argc, char *argv[], char *envp[])
     binary_trace = fopen (options.pFilename, "wb");
     // Header for binary format
     sprintf_s (header, 512, "Header is %d bytes long. FE1 freq uint64 %u [1], FE2 freq uint64 %u [1], NoOfChannels uint %u [1], blockSize uint %u [1]. For each block: blockIQtimeStart uint64 %u [1], Fsample double %u [1], short scaling %u [NoOfChannels], double real %u [blockSize*NoOfChannels], double imag %u [blockSize*NoOfChannels]",
-	       sizeof (header),
-	       sizeof (ChannelCtrl1.Frequency),
-	       sizeof (ChannelCtrl2.Frequency),
-	       sizeof (NoOfChannels),
-	       sizeof (MeasCtrl.NoOfSamples),
-	       sizeof (IQResult.StartTimeIQ),
-	       sizeof (IQResult.Fsample),
-	       sizeof (*pScaling),
-	       sizeof (*pReal), sizeof (*pImag));
+               sizeof (header),
+               sizeof (ChannelCtrl1.Frequency),
+               sizeof (ChannelCtrl2.Frequency),
+               sizeof (NoOfChannels),
+               sizeof (MeasCtrl.NoOfSamples),
+               sizeof (IQResult.StartTimeIQ),
+               sizeof (IQResult.Fsample),
+               sizeof (*pScaling),
+               sizeof (*pReal), sizeof (*pImag));
     printf ("Header for binary trace: %s\n", header);
     fwrite (&header, sizeof (header), 1, binary_trace);
     fwrite (&ChannelCtrl1.Frequency, sizeof (ChannelCtrl1.Frequency), 1, binary_trace);
@@ -354,73 +354,73 @@ main (int argc, char *argv[], char *envp[])
       double iq_average_power = 0;
       unsigned int channel_offset = 0;
       do {
-	CntBlock = CntBlock + 1;
-	// Schedule measurement
-	if (options.trigger) {
-	  ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID, NULL, 0,
-					   &MeasCtrl, pChannelCtrl1, pChannelCtrl2,
-					   pTriggerParam);
-	} else {
-	  ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID, NULL, 0,
-				       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
-	}
-	// Get data for MeasRequestID, wait for a data block up to
-	// TimeOut seconds
-	ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID, TimeOut, &IQResult,
-					   pReal, pImag, pScaling,
-					   pOverFlow, pCalibrated,
-					   MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
-	if (ErrorCode == 0) {
-	  // printf ("Block %d received: %u\n",CntBlock,IQResult.NoOfSamples);
-	  // printf ("Block %d received\n",CntBlock);
+        CntBlock = CntBlock + 1;
+        // Schedule measurement
+        if (options.trigger) {
+          ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID, NULL, 0,
+                                           &MeasCtrl, pChannelCtrl1, pChannelCtrl2,
+                                           pTriggerParam);
+        } else {
+          ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID, NULL, 0,
+                                       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+        }
+        // Get data for MeasRequestID, wait for a data block up to
+        // TimeOut seconds
+        ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID, TimeOut, &IQResult,
+                                           pReal, pImag, pScaling,
+                                           pOverFlow, pCalibrated,
+                                           MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
+        if (ErrorCode == 0) {
+          // printf ("Block %d received: %u\n",CntBlock,IQResult.NoOfSamples);
+          // printf ("Block %d received\n",CntBlock);
 
-	  if (options.verbose) {
-	    printf ("Block %d received\n",CntBlock);
-	    // Display samples for each sub-channel
-	    for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
-	      // Sample offset between two successive channels
-	      channel_offset = CntChannel*MeasCtrl.NoOfSamples;
-	      printf ("Channel %u/%u: (first sample scaling,re,im) %d, %.2f, %.2f\n",
-		       CntChannel+1,NoOfChannels,
-		       pScaling[CntChannel], pReal[channel_offset], pImag[channel_offset]);
+          if (options.verbose) {
+            printf ("Block %d received\n",CntBlock);
+            // Display samples for each sub-channel
+            for (unsigned int CntChannel = 0; CntChannel < NoOfChannels; CntChannel++) {
+              // Sample offset between two successive channels
+              channel_offset = CntChannel*MeasCtrl.NoOfSamples;
+              printf ("Channel %u/%u: (first sample scaling,re,im) %d, %.2f, %.2f\n",
+                       CntChannel+1,NoOfChannels,
+                       pScaling[CntChannel], pReal[channel_offset], pImag[channel_offset]);
 
-	      iq_power = util.get_iq_power (pScaling[CntChannel],
-					    pReal[channel_offset],
-					    pImag[channel_offset]);
-	      printf ("Channel %u/%u: (first sample IQ power) %.2f dBm\n",
-		      CntChannel+1,NoOfChannels,
-		      iq_power);
+              iq_power = util.get_iq_power (pScaling[CntChannel],
+                                            pReal[channel_offset],
+                                            pImag[channel_offset]);
+              printf ("Channel %u/%u: (first sample IQ power) %.2f dBm\n",
+                      CntChannel+1,NoOfChannels,
+                      iq_power);
 
-	      if (pOverFlow[CntChannel] > 0)
-		printf ("Channel %u/%u: (overflow) %lu\n",pOverFlow[CntChannel]);
+              if (pOverFlow[CntChannel] > 0)
+                printf ("Channel %u/%u: (overflow) %lu\n",pOverFlow[CntChannel]);
 
-	      // Average power over all samples
-	      iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
-							    &pReal[channel_offset],
-							    &pImag[channel_offset],
-							    MeasCtrl.NoOfSamples);
-	      printf ("Channel %u/%u: (avg. IQ power) %.2f dBm\n",
-		      CntChannel+1,NoOfChannels,
-		      iq_average_power);
-	    }
-	  }
-	  if (options.fileOutputFlag) {
-	    fwrite (&IQResult.StartTimeIQ, sizeof (IQResult.StartTimeIQ), 1, binary_trace);
-	    fwrite (&IQResult.Fsample, sizeof (IQResult.Fsample), 1, binary_trace);
-	    fwrite (pScaling, sizeof (*pScaling), NoOfChannels, binary_trace);
-	    fwrite (pReal, sizeof (*pReal), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
-	    fwrite (pImag, sizeof (*pImag), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
-	  }
+              // Average power over all samples
+              iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
+                                                            &pReal[channel_offset],
+                                                            &pImag[channel_offset],
+                                                            MeasCtrl.NoOfSamples);
+              printf ("Channel %u/%u: (avg. IQ power) %.2f dBm\n",
+                      CntChannel+1,NoOfChannels,
+                      iq_average_power);
+            }
+          }
+          if (options.fileOutputFlag) {
+            fwrite (&IQResult.StartTimeIQ, sizeof (IQResult.StartTimeIQ), 1, binary_trace);
+            fwrite (&IQResult.Fsample, sizeof (IQResult.Fsample), 1, binary_trace);
+            fwrite (pScaling, sizeof (*pScaling), NoOfChannels, binary_trace);
+            fwrite (pReal, sizeof (*pReal), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
+            fwrite (pImag, sizeof (*pImag), NoOfChannels*MeasCtrl.NoOfSamples, binary_trace);
+          }
 
-	} else {
-	  util.printLastError (ErrorCode);
-	}
-	if (CntBlock >= options.max_number_of_blocks)
-	  break;
+        } else {
+          util.printLastError (ErrorCode);
+        }
+        if (CntBlock >= options.max_number_of_blocks)
+          break;
       } while (!_kbhit());
       printf ("Number of blocks: %u\n",CntBlock);
       if (options.fileOutputFlag) {
-	fclose (binary_trace);
+        fclose (binary_trace);
       }
     } else {
       util.printLastError (ErrorCode);
