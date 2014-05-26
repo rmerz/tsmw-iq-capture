@@ -8,6 +8,7 @@ from matplotlib import pylab as plt
 def setup_args():
     parser = argparse.ArgumentParser(description='Extract data from binary file obtained with extract_iq.')
     parser.add_argument('filepath', type=str, help='File to open.')
+    parser.add_argument('--header_length', type=int, default=512, help='Length of the text header (default is 512)')
     args   = parser.parse_args()
     return args
 
@@ -40,15 +41,21 @@ def main (args):
     f = open (args.filepath,'rb')
 
     # This assumes you already know the length of the header
-    header = decode_header (f.read (256))
-    print (header)
+    header = decode_header (f.read (args.header_length))
+    print ('Header: ',header)
 
+    FE = decode_fe_freq (f)
+    print ('Front-end frequencies: {}'.format (FE))
+    number_of_channels = decode_uint32 (f,2)
+    print ('Number of channels: {}'.format (number_of_channels))
+    block_size = decode_uint32 (f)
+    print ('Block size: {}'.format (block_size))
     while (True):
         # This assumes you know what to expect
-        block_size = decode_uint32 (f)
-        if len (block_size) == 0:
+        start_time_iq = decode_uint64 (f)
+        if len (start_time_iq) == 0:
             break
-        print (block_size)
+        print (start_time_iq)
         sample_rate = decode_float64 (f)
         print (sample_rate)
         scaling = decode_int16 (f,n=1)  # Scaling
@@ -68,8 +75,8 @@ def main (args):
     # f, Pxx_den = signal.periodogram(real_scaled+np.complex(0,1)*imag_scaled, nfft=2048)
     f, Pxx_den = signal.welch(real_scaled+np.complex(0,1)*imag_scaled,
                               fs = sample_rate,
-                              scaling='density',
-                              #scaling='spectrum',
+                              #scaling='density',
+                              scaling='spectrum',
                               nperseg=4096)
 
     plt.ion ()

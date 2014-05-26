@@ -49,8 +49,9 @@ def main (args):
     fe1,fe2 = decode_fe_freq (f)
     print (fe1)
     print (fe2)
-    number_of_channels = decode_uint32 (f)
-    print (number_of_channels)
+    number_of_channels_fe = decode_uint32 (f,2)
+    print (number_of_channels_fe)
+    number_of_channels = np.sum (number_of_channels_fe)
     block_size = decode_uint32 (f)
     print (block_size)
     while (True):

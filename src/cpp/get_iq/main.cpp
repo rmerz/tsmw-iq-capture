@@ -308,11 +308,12 @@ main (int argc, char *argv[], char *envp[])
   if (options.fileOutputFlag) {
     binary_trace = fopen (options.pFilename, "wb");
     // Header for binary format
-    sprintf_s (header, 512, "Header is %d bytes long. FE1 freq uint64 %u [1], FE2 freq uint64 %u [1], NoOfChannels uint %u [1], blockSize uint %u [1]. For each block: blockIQtimeStart uint64 %u [1], Fsample double %u [1], short scaling %u [NoOfChannels], double real %u [blockSize*NoOfChannels], double imag %u [blockSize*NoOfChannels]",
+    sprintf_s (header, 512, "Header is %d bytes long. FE1_freq uint64 %u [1], FE2_freq uint64 %u [1], NoOfChannelsFE1 uint %u [1], NoOfChannelsFE2 uint %u [1], blockSize uint %u [1]. For each block: blockIQtimeStart uint64 %u [1], Fsample double %u [1], scaling  short %u [(NoOfChannelsFE1+NoOfChannelsFE2)], real double %u [blockSize*(NoOfChannelsFE1+NoOfChannelsFE2)], imag double %u [blockSize*(NoOfChannelsFE1+NoOfChannelsFE2)]",
                sizeof (header),
                sizeof (ChannelCtrl1.Frequency),
                sizeof (ChannelCtrl2.Frequency),
-               sizeof (NoOfChannels),
+	       sizeof (ChannelCtrl1.NoOfChannels),
+               sizeof (ChannelCtrl2.NoOfChannels),
                sizeof (MeasCtrl.NoOfSamples),
                sizeof (IQResult.StartTimeIQ),
                sizeof (IQResult.Fsample),
@@ -322,7 +323,8 @@ main (int argc, char *argv[], char *envp[])
     fwrite (&header, sizeof (header), 1, binary_trace);
     fwrite (&ChannelCtrl1.Frequency, sizeof (ChannelCtrl1.Frequency), 1, binary_trace);
     fwrite (&ChannelCtrl2.Frequency, sizeof (ChannelCtrl2.Frequency), 1, binary_trace);
-    fwrite (&NoOfChannels, sizeof (NoOfChannels), 1, binary_trace);
+    fwrite (&ChannelCtrl1.NoOfChannels, sizeof (unsigned int), 1, binary_trace);
+    fwrite (&ChannelCtrl2.NoOfChannels, sizeof (unsigned int), 1, binary_trace);
     fwrite (&MeasCtrl.NoOfSamples, sizeof (MeasCtrl.NoOfSamples), 1, binary_trace);
   }
 

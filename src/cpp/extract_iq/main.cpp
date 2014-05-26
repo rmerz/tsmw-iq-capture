@@ -162,6 +162,8 @@ main (int argc, char *argv[], char *envp[])
   unsigned int *pCalibrated = (unsigned int*) malloc (numberOfChannels*sizeof(unsigned int));
   unsigned __int64 offset = 0;
 
+  unsigned __int64 dummy = 0;
+
   std::vector<FILE *> textIQFiles (numberOfChannels);
   char header[512];
   if (options.saveToFile) {
@@ -179,20 +181,30 @@ main (int argc, char *argv[], char *envp[])
                   << sizeof (*pScaling) << " "
                   << sizeof (*pReal) << " "
                   << sizeof (*pImag) << std::endl;
-        sprintf_s (header, 512, "Header is %d bytes long. FE1 freq uint64 %u [1], FE2 freq uint64 %u [1], NoOfChannels uint %u [1], blockSize uint %u [1]. For each block: blockIQtimeStart uint64 %u [1], Fsample double %u [1], short scaling %u [NoOfChannels], double real %u [blockSize*NoOfChannels], double imag %u [blockSize*NoOfChannels]",
+        sprintf_s (header, 512, "Header is %d bytes long. FE1_freq uint64 %u [1], FE2_freq uint64 %u [1], NoOfChannelsFE1 uint %u [1], NoOfChannelsFE2 uint %u [1], blockSize uint %u [1]. For each block: blockIQtimeStart uint64 %u [1], Fsample double %u [1], scaling short %u [(NoOfChannelsFE1+NoOfChannelsFE2)], real double %u [blockSize*(NoOfChannelsFE1+NoOfChannelsFE2)], imag double %u [blockSize*(NoOfChannelsFE1+NoOfChannelsFE2)]",
                    sizeof (header),
                    sizeof (ChannelCtrl1.Frequency),
                    sizeof (ChannelCtrl2.Frequency),
-                   sizeof (numberOfChannels),
+                   sizeof (ChannelCtrl1.NoOfChannels),
+                   sizeof (ChannelCtrl2.NoOfChannels),
                    sizeof (blockSize),
                    sizeof (IQResult.StartTimeIQ),
                    sizeof (IQResult.Fsample), sizeof (*pScaling),
                    sizeof (*pReal), sizeof (*pImag));
         std::cout << header << std::endl;
         fwrite (&header, sizeof (header), 1, textIQFiles[k]);
-        fwrite (&ChannelCtrl1.Frequency, sizeof (ChannelCtrl1.Frequency), 1, textIQFiles[k]);
-        fwrite (&ChannelCtrl2.Frequency, sizeof (ChannelCtrl2.Frequency), 1, textIQFiles[k]);
-        fwrite (&numberOfChannels, sizeof (numberOfChannels), 1,  textIQFiles[k]);
+	if (k == 0) {
+	  fwrite (&ChannelCtrl1.Frequency, sizeof (ChannelCtrl1.Frequency), 1, textIQFiles[k]);
+	  fwrite (&dummy, sizeof (ChannelCtrl2.Frequency), 1, textIQFiles[k]);
+	  fwrite (&ChannelCtrl1.NoOfChannels, sizeof (numberOfChannels), 1,  textIQFiles[k]);
+	  fwrite (&dummy, sizeof (numberOfChannels), 1, textIQFiles[k]);
+	}
+	else if (k == 1) {
+	  fwrite (&dummy, sizeof (ChannelCtrl1.Frequency), 1, textIQFiles[k]);
+	  fwrite (&ChannelCtrl2.Frequency, sizeof (ChannelCtrl2.Frequency), 1, textIQFiles[k]);
+	  fwrite (&dummy, sizeof (numberOfChannels), 1, textIQFiles[k]);
+	  fwrite (&ChannelCtrl2.NoOfChannels, sizeof (numberOfChannels), 1,  textIQFiles[k]);
+	}
         fwrite (&blockSize, sizeof (blockSize), 1, textIQFiles[k]);
       } else {
         textIQFiles[k] = fopen ((filename + std::string(".csv")).c_str (), "w");
