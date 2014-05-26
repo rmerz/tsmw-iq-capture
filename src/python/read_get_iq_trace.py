@@ -73,9 +73,10 @@ def main (args):
         real_lin_ch1 = real[:block_size]*scaling_lin[0]
         imag_lin_ch1 = imag[:block_size]*scaling_lin[0]
         print (average_iq_power (real_lin_ch1,imag_lin_ch1))
-        real_lin_ch2 = real[block_size:]*scaling_lin[1]
-        imag_lin_ch2 = imag[block_size:]*scaling_lin[1]
-        print (average_iq_power (real_lin_ch2,imag_lin_ch2))
+        if number_of_channels > 1:
+            real_lin_ch2 = real[block_size:]*scaling_lin[1]
+            imag_lin_ch2 = imag[block_size:]*scaling_lin[1]
+            print (average_iq_power (real_lin_ch2,imag_lin_ch2))
 
     # Display last block. And see 4.27 in
     # http://www.ni.com/pdf/manuals/370192c.pdf for why spectrum

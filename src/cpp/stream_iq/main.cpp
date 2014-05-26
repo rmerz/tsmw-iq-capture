@@ -169,7 +169,10 @@ main (int argc, char *argv[], char *envp[])
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl1 = &ChannelCtrl1;
   ChannelCtrl1.Frequency = options.f1; // Center frequency in Hz
   ChannelCtrl1.UseOtherFrontend = 0; // Reserved for future use, has to be zero
-  ChannelCtrl1.NoOfChannels = 1;     // Number of channels that shall be used (1..4)
+  if (ChannelCtrl1.Frequency == 0)
+    ChannelCtrl1.NoOfChannels = 0;
+  else
+    ChannelCtrl1.NoOfChannels = 1;     // Number of channels that shall be used (1..4)
   ChannelCtrl1.Attenuation = 0;      // Attenuation to use (0..15dB)
   ChannelCtrl1.Preamp = 0;           // 1: Enable
   ChannelCtrl1.CalibInput = 0;       // 0: Disable
@@ -191,7 +194,10 @@ main (int argc, char *argv[], char *envp[])
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl2 = &ChannelCtrl2;
   ChannelCtrl2.Frequency = options.f2;
   ChannelCtrl2.UseOtherFrontend = 0;
-  ChannelCtrl2.NoOfChannels = 1;
+  if (ChannelCtrl2.Frequency == 0)
+    ChannelCtrl2.NoOfChannels = 0;
+  else
+    ChannelCtrl2.NoOfChannels = 1;
   ChannelCtrl2.Attenuation = 0;
   ChannelCtrl2.Preamp = 0;
   ChannelCtrl2.CalibInput = 0;
