@@ -256,6 +256,11 @@ main (int argc, char *argv[], char *envp[])
     pChannelCtrl2 = NULL;
   }
 
+  if (options.trigger && pChannelCtrl1 == NULL) {
+    printf ("Disabling frontend 1 with triggered measurements is not supported.\n");
+    exit (-1);
+  }
+
   unsigned int TimeOut = 10000; // in ms
 
   unsigned __int64 Offset = 0;
@@ -297,7 +302,7 @@ main (int argc, char *argv[], char *envp[])
                            // 2: Change attenuator and preamp setting
     TriggerParam.Mode = 0; // Trigger mode, has to be zero
     TriggerParam.Falling = 0; // Trigger edge, 0: rising, 1: falling
-    TriggerParam.TriggerLine = 3; // 1: Use trigger input 1
+    TriggerParam.TriggerLine = 1; // 1: Use trigger input 1
                                   // 2: Use trigger input 2
                                   // 3: Trigger on both inputs
     TriggerParam.MeasRequestID;  // Meas.request ID of
@@ -354,7 +359,7 @@ main (int argc, char *argv[], char *envp[])
       printf ("Entering measurement loop\n");
       printf ("Press any key to interrupt\n");
 
-      unsigned long MeasRequestID;
+      unsigned long MeasRequestID[2];
 
       // Continuously get and process data until key pressed
       unsigned int CntBlock = 0;
@@ -365,19 +370,41 @@ main (int argc, char *argv[], char *envp[])
         CntBlock = CntBlock + 1;
         // Schedule measurement
         if (options.trigger) {
-          ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID, NULL, 0,
-                                           &MeasCtrl, pChannelCtrl1, pChannelCtrl2,
-                                           pTriggerParam);
+	  ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID[0], NULL, 0,
+					   &MeasCtrl, pChannelCtrl1, NULL,
+					   pTriggerParam);
+	  if (pChannelCtrl2 != NULL)
+	    ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID[1], NULL, 0,
+					     &MeasCtrl, NULL, pChannelCtrl2,
+					     pTriggerParam);
         } else {
-          ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID, NULL, 0,
+          ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID[0], NULL, 0,
                                        &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
         }
         // Get data for MeasRequestID, wait for a data block up to
         // TimeOut seconds
-        ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID, TimeOut, &IQResult,
-                                           pReal, pImag, pScaling,
-                                           pOverFlow, pCalibrated,
-                                           MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
+        if (options.trigger) {
+	  ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID[0], TimeOut, &IQResult,
+					     pReal, pImag, pScaling,
+					     pOverFlow, pCalibrated,
+					     MeasCtrl.NoOfSamples, 1, 0, 0);
+	  printf ("Check: %lu\n",IQResult.StartTimeIQ);
+	  if (pChannelCtrl2 != NULL) {
+	    ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID[1], TimeOut, &IQResult,
+					       &pReal[MeasCtrl.NoOfSamples*ChannelCtrl1.NoOfChannels], &pImag[MeasCtrl.NoOfSamples*ChannelCtrl1.NoOfChannels], &pScaling[1],
+					       &pOverFlow[1], &pCalibrated[1],
+					       MeasCtrl.NoOfSamples, 1, 0, 0);
+	    printf ("Check: %lu\n",IQResult.StartTimeIQ);
+	  }
+
+	} else {
+	  ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID[0], TimeOut, &IQResult,
+					     pReal, pImag, pScaling,
+					     pOverFlow, pCalibrated,
+					     MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
+	}
+
+
         if (ErrorCode == 0) {
           // printf ("Block %d received: %u\n",CntBlock,IQResult.NoOfSamples);
           // printf ("Block %d received\n",CntBlock);
