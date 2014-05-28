@@ -400,7 +400,7 @@ main (int argc, char *argv[], char *envp[])
                       iq_power);
 
               if (pOverFlow[CntChannel] > 0)
-                printf ("Channel %u/%u: (overflow) %lu\n",pOverFlow[CntChannel]);
+                printf ("Channel %u/%u: (OVERFLOW) %lu\n",pOverFlow[CntChannel]);
 
               // Average power over all samples
               iq_average_power = util.get_average_iq_power (pScaling[CntChannel],

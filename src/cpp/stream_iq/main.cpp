@@ -327,7 +327,7 @@ main (int argc, char *argv[], char *envp[])
                           << iq_power << " dBm" << std::endl;
 
                 if (pOverFlow[CntChannel] > 0)
-                  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << ": " << pOverFlow[CntChannel] << std::endl;
+                  std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << " OVERFLOW: " << pOverFlow[CntChannel] << std::endl;
 
                 // Average power over all samples
                 iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
