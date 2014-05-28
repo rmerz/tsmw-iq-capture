@@ -16,6 +16,7 @@
 #include "../common/util.h"
 // Include filter specification for 2 MS/s and 0.22 MS/s sampling rate
 #include "../include/Filter_1MHz.h"
+#include "../include/Filter_5MHz.h"
 #include "../include/Filter_110kHz.h"
 
 #include "stdafx.h"
@@ -275,7 +276,8 @@ main (int argc, char *argv[], char *envp[])
 
     // Send user-specific resampling filter to TSMW
     //ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
-    ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
+    ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_5MHzParam, Filter_5MHzCoeff);
+    // ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
     if (ErrorCode == 0) {
       std::cout << "Filter set\n";
       // Start streaming with predefined measurement and streaming
