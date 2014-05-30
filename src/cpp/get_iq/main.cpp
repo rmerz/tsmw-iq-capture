@@ -39,6 +39,7 @@ public:
                           pDescription (NULL),
                           verbose (false),
                           trigger (false),
+                          zmq (false),
                           f1 (1000000000),
                           f2 (0),
                           splitter (0),
@@ -54,6 +55,7 @@ public:
   char* pDescription;
   bool verbose;
   bool trigger;
+  bool zmq;
 
   (unsigned __int64) f1;
   (unsigned __int64) f2;
@@ -85,6 +87,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string verbose_opt ("-v");
   std::string block_opt ("-n");
   std::string trigger_opt ("-t");
+  std::string zmq_opt ("-t");
 
   for (int count = 1; count < argc; count++) {
     // std::cout << "  argv[" << count << "]   "
@@ -101,6 +104,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
                 << "--block_length [INT]\tSize in bits of the measurement blocks (default is 1e6)\n"
                 << "-n [UINT]\tMax. number of blocks to capture (default is unlimited)\n"
                 << "-t\t\tActive external trigger mode (default is inactive)\n"
+                << "-z\t\tActivate zeroMQ publishing (default is inactive)\n"
                 << "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
     }
@@ -133,6 +137,10 @@ CaptureOptions::parseCmd (int argc, char *argv[])
     }
     if (verbose_opt.compare (argv[count]) == 0) {
       verbose = true;
+      valid = true;
+    }
+    if (zmq_opt.compare (argv[count]) == 0) {
+      zmq = true;
       valid = true;
     }
     if (fe_splitter.compare (argv[count]) == 0) {
@@ -174,21 +182,36 @@ main (int argc, char *argv[], char *envp[])
   int ErrorCode;
   CaptureOptions options;
   Util util;
+  // zmq specific
+  void *context;
+  void *publisher;
 
   options.parseCmd (argc,argv);
 
-  // Prepare our context and publisher
-  void *context = zmq_ctx_new ();
-  void *publisher = zmq_socket (context, ZMQ_PUB);
-  int rc = zmq_bind (publisher, "tcp://127.0.0.1:5556");
-  assert (rc == 0);
-  double test[4] = {3.1415,1.4,2.0,-9};
-  while (1) {
-    //rc = zmq_send (publisher, "Hello World", sizeof ("Hello World"), ZMQ_DONTWAIT);
-    rc = zmq_send (publisher, &test, sizeof (test), ZMQ_DONTWAIT);
+  if (options.zmq) {
+    // Prepare our context and publisher
+    context = zmq_ctx_new ();
+    publisher = zmq_socket (context, ZMQ_PUB);
+    int max_queued_messages = 1;
+    int rc = zmq_setsockopt (publisher, ZMQ_SNDHWM, &max_queued_messages, sizeof(max_queued_messages));
+    assert (rc == 0);
+    int hwm;
+    size_t hwm_size = sizeof (hwm);
+    zmq_getsockopt (publisher, ZMQ_SNDHWM,  &hwm, &hwm_size);
+    assert (rc == 0);
+    printf ("High water mark set to %d\n",hwm);
+    rc = zmq_bind (publisher, "tcp://127.0.0.1:5556");
+    assert (rc == 0);
+    double test[4] = {3.1415,1.4,2.0,-9};
+    unsigned int count = 0;
+    while (1) {
+      //rc = zmq_send (publisher, "Hello World", sizeof ("Hello World"), ZMQ_DONTWAIT);
+      printf ("Push %u\n",count);
+      rc = zmq_send (publisher, &test, sizeof (test), ZMQ_DONTWAIT); assert (rc == 0);
+      count += 1;
+    }
   }
-  //rc = zmq_bind (publisher, "ipc://weather.ipc");
-  //assert (rc == 0);
+
 
   char IPAddress[] = "192.168.0.2";
   TSMW_IQIF_MODE_t TSMWMode;
