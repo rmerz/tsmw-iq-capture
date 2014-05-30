@@ -13,7 +13,7 @@
  *
  */
 
-#include <zmq.h> // Needs to be before windows.h
+#include "../include/zmq.h" // Needs to be before windows.h
 #include <windows.h>
 #include <conio.h>
 #include <assert.h>
@@ -176,6 +176,19 @@ main (int argc, char *argv[], char *envp[])
   Util util;
 
   options.parseCmd (argc,argv);
+
+  // Prepare our context and publisher
+  void *context = zmq_ctx_new ();
+  void *publisher = zmq_socket (context, ZMQ_PUB);
+  int rc = zmq_bind (publisher, "tcp://127.0.0.1:5556");
+  assert (rc == 0);
+  double test[4] = {3.1415,1.4,2.0,-9};
+  while (1) {
+    //rc = zmq_send (publisher, "Hello World", sizeof ("Hello World"), ZMQ_DONTWAIT);
+    rc = zmq_send (publisher, &test, sizeof (test), ZMQ_DONTWAIT);
+  }
+  //rc = zmq_bind (publisher, "ipc://weather.ipc");
+  //assert (rc == 0);
 
   char IPAddress[] = "192.168.0.2";
   TSMW_IQIF_MODE_t TSMWMode;
