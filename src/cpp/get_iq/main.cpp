@@ -13,6 +13,7 @@
  *
  */
 
+#include <zmq.h> // Needs to be before windows.h
 #include <windows.h>
 #include <conio.h>
 #include <assert.h>
