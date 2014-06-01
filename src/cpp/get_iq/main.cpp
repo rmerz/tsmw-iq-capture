@@ -87,7 +87,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string verbose_opt ("-v");
   std::string block_opt ("-n");
   std::string trigger_opt ("-t");
-  std::string zmq_opt ("-t");
+  std::string zmq_opt ("-z");
 
   for (int count = 1; count < argc; count++) {
     // std::cout << "  argv[" << count << "]   "
@@ -192,22 +192,55 @@ main (int argc, char *argv[], char *envp[])
     // Prepare our context and publisher
     context = zmq_ctx_new ();
     publisher = zmq_socket (context, ZMQ_PUB);
-    int max_queued_messages = 1;
-    int rc = zmq_setsockopt (publisher, ZMQ_SNDHWM, &max_queued_messages, sizeof(max_queued_messages));
+    int hwm = 1;
+    int rc = zmq_setsockopt (publisher, ZMQ_SNDHWM, &hwm, sizeof(hwm));
     assert (rc == 0);
-    int hwm;
     size_t hwm_size = sizeof (hwm);
     zmq_getsockopt (publisher, ZMQ_SNDHWM,  &hwm, &hwm_size);
     assert (rc == 0);
     printf ("High water mark set to %d\n",hwm);
     rc = zmq_bind (publisher, "tcp://127.0.0.1:5556");
     assert (rc == 0);
+    int nb_channel = 2;
+    double scale = 2.3;
     double test[4] = {3.1415,1.4,2.0,-9};
+
+    // use a struct
+    typedef struct {
+      int nb_channel;
+      double scale;
+    } msg_struct;
+    msg_struct msg;
+    printf ("%d\n",sizeof(msg));
+    msg.nb_channel = nb_channel;
+    msg.scale = 2.3;
+    // //zmq_msg_init_size (&msg, sizeof(int)+sizeof(double)+4*sizeof(double));
+    // zmq_msg_init_size (&msg, 10000);
+    //msg[0] = nb_channel;
+    // memcpy (&msg, &nb_channel, sizeof(nb_channel));
+    // memcpy (&msg+4, &nb_channel, sizeof(nb_channel));
+    //memcpy (&msg[sizeof(nb_channel)],
+    //      &scale, sizeof(scale));
+    // // memcpy ((char*)zmq_msg_data (&msg)+sizeof(nb_channel)+sizeof(double),
+    // //         &test, sizeof(test));
+
+    // zmq_msg_t msg;
+    // rc = zmq_msg_init_size (&msg, sizeof(int)+sizeof(double)+4*sizeof(double));
+    // assert (rc == 0);
+    // /* Fill in message content with 'AAAAAA' */
+    // memcpy (zmq_msg_data (&msg), &nb_channel, sizeof(nb_channel));
+    // memcpy ((char*)zmq_msg_data (&msg)+sizeof(nb_channel),
+    //         &scale, sizeof(double));
+    // memcpy ((char*)zmq_msg_data (&msg)+sizeof(nb_channel)+sizeof(double),
+    //         &test, sizeof(test));
+    /* Send the message to the socket */
+
     unsigned int count = 0;
     while (1) {
+      rc = zmq_send (publisher, &msg, sizeof (msg_struct), ZMQ_DONTWAIT);
       //rc = zmq_send (publisher, "Hello World", sizeof ("Hello World"), ZMQ_DONTWAIT);
       printf ("Push %u\n",count);
-      rc = zmq_send (publisher, &test, sizeof (test), ZMQ_DONTWAIT); assert (rc == 0);
+      printf ("%d\n",sizeof(msg));
       count += 1;
     }
   }
