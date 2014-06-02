@@ -1,12 +1,54 @@
 #!/usr/bin/env python
 
 import zmq
-import random
-import sys
+import collections
 import time
 import numpy as np
+from matplotlib import pylab as plt
+
+class Plotter ():
+    def __init__ (self):
+        plt.figure (1)
+        plt.ylim ([-120,-50])
+        plt.ion ()
+
+    def update_iq_power_plot (self,iq_power,channel=1):
+        # plt.figure (1)
+        plt.cla ()
+        if channel == 1:
+            plt.plot (iq_power,'d-',color='b')
+        if channel == 2:
+            plt.plot (iq_power,'o-',color='r')
+        plt.grid (True)
+        plt.ylim ([-120,-50])
+        plt.tight_layout ()
+        plt.show ()
+        plt.pause (0.00001)
 
 class SampleProcessor ():
+    def __init__ (self):
+        self.memory = 100
+        self.average_iq_power_chan_1_queue = collections.deque (maxlen=self.memory)
+        self.average_iq_power_chan_1_queue.append (1)
+        print (self.average_iq_power_chan_1_queue)
+        self.average_iq_power_chan_2_queue = collections.deque (maxlen=self.memory)
+
+    @property
+    def iq_power_chan_1 (self):
+        return self.average_iq_power_chan_1_queue
+
+    @iq_power_chan_1.setter
+    def iq_power_chan_1 (self,value):
+        self.average_iq_power_chan_1_queue.append (value)
+
+    @property
+    def iq_power_chan_2 (self):
+        return self.average_iq_power_chan_2_queue
+
+    @iq_power_chan_2.setter
+    def iq_power_chan_2 (self,value):
+        self.average_iq_power_chan_2_queue.append (value)
+
     def average_IQ_power_lin_dBm (self,scaling,iq_real,iq_imag):
         scaling_lin = np.power (10,scaling/2000)
         return 10*np.log10 (np.mean (np.power (iq_real*scaling_lin,2.0) + np.power (iq_imag*scaling_lin,2.0)))
@@ -25,6 +67,7 @@ class ZmqSub ():
 def main():
     sub = ZmqSub ()
     iq_proc = SampleProcessor ()
+    plot = Plotter ()
 
     while (True):
         msg = sub.get_msg ()
@@ -58,12 +101,19 @@ def main():
 
         print('{} real[0], imag[0]: {} {}'.format (offset,real[0],imag[0]))
         print ('IQ power first sample: {:.2f}'.format (iq_proc.average_IQ_power_lin_dBm (scaling[0],real[0],imag[0])))
-        print ('IQ power: {:.2f}'.format (iq_proc.average_IQ_power_lin_dBm (scaling[0],real[:nb_of_samples],imag[:nb_of_samples])))
+        iq_power = iq_proc.average_IQ_power_lin_dBm (scaling[0],real[:nb_of_samples],imag[:nb_of_samples])
+        print ('IQ power: {:.2f}'.format (iq_power))
+
+        iq_proc.iq_power_chan_1 = iq_power
+        plot.update_iq_power_plot (iq_proc.iq_power_chan_1,1)
+
         if nb_of_channels > 1:
             print ('real[0],imag[0]: {} {}'.format (real[nb_of_samples],imag[nb_of_samples]))
             print ('IQ power first sample: {:.2f}'.format (iq_proc.average_IQ_power_lin_dBm (scaling[1],real[nb_of_samples],imag[nb_of_samples])))
             print ('IQ power: {:.2f}'.format (iq_proc.average_IQ_power_lin_dBm (scaling[1],real[nb_of_samples:],imag[nb_of_samples:])))
 
+            iq_proc.iq_power_chan_2 = iq_power
+            plot.update_iq_power_plot (iq_proc.iq_power_chan_2,2)
 
         #imag = np.frombuffer(msg,dtype='float64',count=nb_of_channels*nb_of_samples,offset=40+(nb_of_channels*nb_of_samples*8))
         #print (real[0],imag[0])
