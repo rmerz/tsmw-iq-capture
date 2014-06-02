@@ -32,7 +32,8 @@ public:
                           f1 (1000000000),
                           f2 (0),
                           splitter (0),
-                          block_length (1000000)
+                          block_length (1000000),
+			  filter_id (1)
                           
   {}
 
@@ -45,6 +46,7 @@ public:
   (unsigned __int64) f1;
   (unsigned __int64) f2;
   unsigned int splitter;
+  unsigned int filter_id;
 
   (unsigned int) block_length;
 };
@@ -66,6 +68,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string fe1_freq ("--fe1_freq");
   std::string fe2_freq ("--fe2_freq");
   std::string block_length_opt ("--block_length");
+  std::string filter_opt ("--filter_id");
   std::string help ("--help");
   std::string short_help ("-h");
 
@@ -81,6 +84,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
                 << "--fe2_freq [double]\tFrequency of frontend 2 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 2 (default is 0 e.g inactive)\n"
                 << "--splitter\tActivate splitter from FE1 to FE2 (default is inactive)\n"
                 << "--block_length\tSize in bits of the measurement blocks (default is 1e6)\n"
+                << "--filter_id [INT]\tFilter identifier (default is 1, available 0, 5, 110)\n"
                 << "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
     }
@@ -127,6 +131,12 @@ CaptureOptions::parseCmd (int argc, char *argv[])
       block_length = (unsigned int)atof (argv[count]);
       valid = true;
     }
+    if (filter_opt.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      filter_id = (unsigned int)atof (argv[count]);
+      valid = true;
+    }
     if (valid == false) {
       std::cerr << "Invalid option: " << argv[count] << std::endl;
       exit (-1);
@@ -155,7 +165,10 @@ main (int argc, char *argv[], char *envp[])
 
   TSMW_IQIF_MEAS_CTRL_t MeasCtrl;
   MeasCtrl.NoOfSamples = options.block_length; // Number of IQ samples to measure
-  MeasCtrl.FilterType = 1;  // Use userdefined filters (0 corresponds to pre-defined filters)
+  if (options.filter_id == 0)
+    MeasCtrl.FilterType = 0;
+  else
+    MeasCtrl.FilterType = 1;  // Use userdefined filters (0 corresponds to pre-defined filters)
   MeasCtrl.FilterID = 1;    // Number of the filter that shall be used
   MeasCtrl.DataFormat = 3;  // IQ-data compression format, 3: 20 Bit / 2 is 12 Bit
   MeasCtrl.AttStrategy = 0; // Attenuation strategy, currently unused, shall be set to zero
@@ -275,9 +288,20 @@ main (int argc, char *argv[], char *envp[])
     util.waitForFrontendSync ();
 
     // Send user-specific resampling filter to TSMW
-    //ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
-    ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_5MHzParam, Filter_5MHzCoeff);
-    // ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
+    if (options.filter_id == 1)
+      ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
+    else
+      if (options.filter_id == 5)
+	ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_5MHzParam, Filter_5MHzCoeff);
+      else
+	if (options.filter_id == 110)
+	  ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
+	else
+	  if (options.filter_id != 0) {
+	    printf ("Invalid filter id.\n");
+	    exit (-1);
+	  }
+
     if (ErrorCode == 0) {
       std::cout << "Filter set\n";
       // Start streaming with predefined measurement and streaming
