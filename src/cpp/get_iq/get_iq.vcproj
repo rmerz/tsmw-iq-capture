@@ -61,7 +61,7 @@
           />
       <Tool
           Name="VCLinkerTool"
-          AdditionalDependencies="TSMWIQInterface.lib"
+          AdditionalDependencies="TSMWIQInterface.lib libzmq-v110_xp-mt-4_0_4.lib"
           OutputFile="..\bin\$(ProjectName).exe"
           LinkIncremental="2"
           AdditionalLibraryDirectories="..\lib;%(AdditionalIncludeDirectories)"
@@ -137,7 +137,7 @@
           />
       <Tool
           Name="VCLinkerTool"
-          AdditionalDependencies="TSMWIQInterface.lib"
+          AdditionalDependencies="TSMWIQInterface.lib libzmq-v110_xp-mt-4_0_4.lib"
           OutputFile="..\bin\$(ProjectName).exe"
           LinkIncremental="1"
           AdditionalLibraryDirectories="..\lib;%(AdditionalIncludeDirectories)"
@@ -212,6 +212,10 @@
       </File>
       <File
           RelativePath="..\common\util.h"
+          >
+      </File>
+      <File
+          RelativePath="..\include\zmq.h"
           >
       </File>
     </Filter>
