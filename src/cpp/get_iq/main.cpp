@@ -188,38 +188,39 @@ main (int argc, char *argv[], char *envp[])
 
   options.parseCmd (argc,argv);
 
+  int zmq_rc = 0;
   if (options.zmq) {
     // Prepare our context and publisher
     context = zmq_ctx_new ();
     publisher = zmq_socket (context, ZMQ_PUB);
     int hwm = 1;
-    int rc = zmq_setsockopt (publisher, ZMQ_SNDHWM, &hwm, sizeof(hwm));
-    assert (rc == 0);
+    zmq_rc = zmq_setsockopt (publisher, ZMQ_SNDHWM, &hwm, sizeof(hwm));
+    assert (zmq_rc == 0);
     size_t hwm_size = sizeof (hwm);
-    zmq_getsockopt (publisher, ZMQ_SNDHWM,  &hwm, &hwm_size);
-    assert (rc == 0);
+    zmq_rc = zmq_getsockopt (publisher, ZMQ_SNDHWM,  &hwm, &hwm_size);
+    assert (zmq_rc == 0);
     printf ("High water mark set to %d\n",hwm);
-    rc = zmq_bind (publisher, "tcp://127.0.0.1:5556");
-    assert (rc == 0);
-    unsigned int nb_channel = 2;
-    double scale = 2.3;
-    double test[4] = {3.1415,1.4,2.0,-9};
+    zmq_rc = zmq_bind (publisher, "tcp://127.0.0.1:5556");
+    assert (zmq_rc == 0);
+    // unsigned int nb_channel = 2;
+    // double scale = 2.3;
+    // double test[4] = {3.1415,1.4,2.0,-9};
 
-    unsigned int msg_len = sizeof (nb_channel) + sizeof (scale) + sizeof (test);
-    char *msg_pack = new char[msg_len]();
+    // unsigned int msg_len = sizeof (nb_channel) + sizeof (scale) + sizeof (test);
+    // char *msg_pack = new char[msg_len]();
 
-    memcpy (&msg_pack[0], &nb_channel, sizeof (nb_channel));
-    memcpy (&msg_pack[sizeof (nb_channel)], &scale, sizeof (scale));
-    memcpy (&msg_pack[sizeof (nb_channel)+sizeof (scale)], &test, sizeof (test));
+    // memcpy (&msg_pack[0], &nb_channel, sizeof (nb_channel));
+    // memcpy (&msg_pack[sizeof (nb_channel)], &scale, sizeof (scale));
+    // memcpy (&msg_pack[sizeof (nb_channel)+sizeof (scale)], &test, sizeof (test));
 
-    unsigned int count = 0;
-    while (1) {
-      rc = zmq_send (publisher, msg_pack, msg_len, ZMQ_DONTWAIT);
-      printf ("Push %u\n",count);
-      printf ("%d\n",msg_len);
-      printf ("%d, %d, %d, %d\n",msg_len,sizeof (char),sizeof(int),sizeof(double));
-      count += 1;
-    }
+    // unsigned int count = 0;
+    // while (1) {
+    //   rc = zmq_send (publisher, msg_pack, msg_len, ZMQ_DONTWAIT);
+    //   printf ("Push %u\n",count);
+    //   printf ("%d\n",msg_len);
+    //   printf ("%d, %d, %d, %d\n",msg_len,sizeof (char),sizeof(int),sizeof(double));
+    //   count += 1;
+    // }
   }
 
 
@@ -340,15 +341,18 @@ main (int argc, char *argv[], char *envp[])
 
   printf ("Number of samples per block: %u\n", MeasCtrl.NoOfSamples);
 
-  // typedef struct {
-  //   unsigned int nb_channel;
-  //   short scaling[NoOfChannels];
-  //   double real[NoOfChannels * MeasCtrl.NoOfSamples];
-  //   double imag[NoOfChannels * MeasCtrl.NoOfSamples];
-  //   unsigned long overflow[NoOfChannels]
-  // } msg_struct;
-  // msg_struct zmq_msg;
-
+  // For zmq
+  unsigned int msg_pack_len = sizeof (NoOfChannels) + sizeof (MeasCtrl.NoOfSamples)
+    + (sizeof (IQResult.Fsample))
+    + (sizeof (IQResult.StartTimeIQ))
+    + (sizeof (pScaling)+sizeof (pOverFlow))*NoOfChannels
+    + (sizeof (double))*(2*NoOfChannels * MeasCtrl.NoOfSamples);
+  char* msg_pack = new char[msg_pack_len]();
+  unsigned int msg_pack_offset = 0;
+  memcpy (&msg_pack[msg_pack_offset], &NoOfChannels, sizeof (NoOfChannels));
+  msg_pack_offset += sizeof (NoOfChannels);
+  memcpy (&msg_pack[msg_pack_offset], &MeasCtrl.NoOfSamples, sizeof (MeasCtrl.NoOfSamples));
+  msg_pack_offset += sizeof (MeasCtrl.NoOfSamples);
 
   TSMW_IQIF_TRIG_CTRL_t TriggerParam;
   TSMW_IQIF_TRIG_CTRL_t *pTriggerParam = &TriggerParam;
@@ -423,6 +427,7 @@ main (int argc, char *argv[], char *envp[])
       double iq_power = 0;
       double iq_average_power = 0;
       unsigned int channel_offset = 0;
+      unsigned int msg_offset = 0;
       do {
         CntBlock = CntBlock + 1;
         // Schedule measurement
@@ -467,7 +472,39 @@ main (int argc, char *argv[], char *envp[])
           // printf ("Block %d received\n",CntBlock);
 
 	  if (options.zmq) {
+	    msg_offset = msg_pack_offset;
+	    // printf ("%d\n",msg_offset);
 
+	    memcpy (&msg_pack[msg_offset], &IQResult.Fsample, sizeof (IQResult.Fsample));
+	    msg_offset += sizeof (IQResult.Fsample);
+
+	    // printf ("%d\n",msg_offset);
+	    memcpy (&msg_pack[msg_offset],
+		    &IQResult.StartTimeIQ, sizeof (IQResult.StartTimeIQ));
+	    msg_offset += sizeof (IQResult.StartTimeIQ);
+
+	    // printf ("%d %d %d\n",msg_offset,sizeof (*pScaling),sizeof (*pScaling)*NoOfChannels);
+	    memcpy (&msg_pack[msg_offset],
+		    pScaling, sizeof (*pScaling)*NoOfChannels);
+	    msg_offset += sizeof (*pScaling)*NoOfChannels;
+
+	    // printf ("%d\n",msg_offset);
+	    memcpy (&msg_pack[msg_offset],
+		    pOverFlow, sizeof (*pOverFlow)*NoOfChannels);
+	    msg_offset += sizeof (*pOverFlow)*NoOfChannels;
+
+	    // printf ("%d\n",msg_offset);
+	    memcpy (&msg_pack[msg_offset],
+		    pReal, sizeof (*pReal)*NoOfChannels*MeasCtrl.NoOfSamples);
+	    msg_offset += sizeof (*pReal)*NoOfChannels*MeasCtrl.NoOfSamples;
+
+	    // printf ("%d\n",msg_offset);
+	    memcpy (&msg_pack[msg_offset],
+		    pImag, sizeof (*pImag)*NoOfChannels*MeasCtrl.NoOfSamples);
+	    msg_offset += sizeof (*pImag)*NoOfChannels*MeasCtrl.NoOfSamples;
+
+	    zmq_rc = zmq_send (publisher, msg_pack, msg_pack_len, ZMQ_DONTWAIT);
+	    assert (zmq_rc);
 	  }
 
           if (options.verbose) {
