@@ -201,19 +201,22 @@ main (int argc, char *argv[], char *envp[])
     printf ("High water mark set to %d\n",hwm);
     rc = zmq_bind (publisher, "tcp://127.0.0.1:5556");
     assert (rc == 0);
-    int nb_channel = 2;
+    unsigned int nb_channel = 2;
     double scale = 2.3;
     double test[4] = {3.1415,1.4,2.0,-9};
 
     // use a struct
+    // #pragma pack(4) // Don't use: slower code per http://www.catb.org/esr/structure-packing/
     typedef struct {
-      int nb_channel;
+      unsigned int nb_channel;
       double scale;
+      double test[4];
     } msg_struct;
     msg_struct msg;
-    printf ("%d\n",sizeof(msg));
+    printf ("%d, %d, %d\n",sizeof(msg),sizeof(int),sizeof(double));
     msg.nb_channel = nb_channel;
     msg.scale = 2.3;
+    memcpy (msg.test, test, 4*sizeof (double));
     // //zmq_msg_init_size (&msg, sizeof(int)+sizeof(double)+4*sizeof(double));
     // zmq_msg_init_size (&msg, 10000);
     //msg[0] = nb_channel;
@@ -241,6 +244,7 @@ main (int argc, char *argv[], char *envp[])
       //rc = zmq_send (publisher, "Hello World", sizeof ("Hello World"), ZMQ_DONTWAIT);
       printf ("Push %u\n",count);
       printf ("%d\n",sizeof(msg));
+      printf ("%d, %d, %d\n",sizeof(msg),sizeof(int),sizeof(double));
       count += 1;
     }
   }
