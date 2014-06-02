@@ -205,46 +205,19 @@ main (int argc, char *argv[], char *envp[])
     double scale = 2.3;
     double test[4] = {3.1415,1.4,2.0,-9};
 
-    // use a struct
-    // #pragma pack(4) // Don't use: slower code per http://www.catb.org/esr/structure-packing/
-    typedef struct {
-      unsigned int nb_channel;
-      double scale;
-      double test[4];
-    } msg_struct;
-    msg_struct msg;
-    printf ("%d, %d, %d\n",sizeof(msg),sizeof(int),sizeof(double));
-    msg.nb_channel = nb_channel;
-    msg.scale = 2.3;
-    memcpy (msg.test, test, 4*sizeof (double));
-    // //zmq_msg_init_size (&msg, sizeof(int)+sizeof(double)+4*sizeof(double));
-    // zmq_msg_init_size (&msg, 10000);
-    //msg[0] = nb_channel;
-    // memcpy (&msg, &nb_channel, sizeof(nb_channel));
-    // memcpy (&msg+4, &nb_channel, sizeof(nb_channel));
-    //memcpy (&msg[sizeof(nb_channel)],
-    //      &scale, sizeof(scale));
-    // // memcpy ((char*)zmq_msg_data (&msg)+sizeof(nb_channel)+sizeof(double),
-    // //         &test, sizeof(test));
+    unsigned int msg_len = sizeof (nb_channel) + sizeof (scale) + sizeof (test);
+    char *msg_pack = new char[msg_len]();
 
-    // zmq_msg_t msg;
-    // rc = zmq_msg_init_size (&msg, sizeof(int)+sizeof(double)+4*sizeof(double));
-    // assert (rc == 0);
-    // /* Fill in message content with 'AAAAAA' */
-    // memcpy (zmq_msg_data (&msg), &nb_channel, sizeof(nb_channel));
-    // memcpy ((char*)zmq_msg_data (&msg)+sizeof(nb_channel),
-    //         &scale, sizeof(double));
-    // memcpy ((char*)zmq_msg_data (&msg)+sizeof(nb_channel)+sizeof(double),
-    //         &test, sizeof(test));
-    /* Send the message to the socket */
+    memcpy (&msg_pack[0], &nb_channel, sizeof (nb_channel));
+    memcpy (&msg_pack[sizeof (nb_channel)], &scale, sizeof (scale));
+    memcpy (&msg_pack[sizeof (nb_channel)+sizeof (scale)], &test, sizeof (test));
 
     unsigned int count = 0;
     while (1) {
-      rc = zmq_send (publisher, &msg, sizeof (msg_struct), ZMQ_DONTWAIT);
-      //rc = zmq_send (publisher, "Hello World", sizeof ("Hello World"), ZMQ_DONTWAIT);
+      rc = zmq_send (publisher, msg_pack, msg_len, ZMQ_DONTWAIT);
       printf ("Push %u\n",count);
-      printf ("%d\n",sizeof(msg));
-      printf ("%d, %d, %d\n",sizeof(msg),sizeof(int),sizeof(double));
+      printf ("%d\n",msg_len);
+      printf ("%d, %d, %d, %d\n",msg_len,sizeof (char),sizeof(int),sizeof(double));
       count += 1;
     }
   }
@@ -367,6 +340,16 @@ main (int argc, char *argv[], char *envp[])
 
   printf ("Number of samples per block: %u\n", MeasCtrl.NoOfSamples);
 
+  // typedef struct {
+  //   unsigned int nb_channel;
+  //   short scaling[NoOfChannels];
+  //   double real[NoOfChannels * MeasCtrl.NoOfSamples];
+  //   double imag[NoOfChannels * MeasCtrl.NoOfSamples];
+  //   unsigned long overflow[NoOfChannels]
+  // } msg_struct;
+  // msg_struct zmq_msg;
+
+
   TSMW_IQIF_TRIG_CTRL_t TriggerParam;
   TSMW_IQIF_TRIG_CTRL_t *pTriggerParam = &TriggerParam;
   if (options.trigger) {
@@ -482,6 +465,10 @@ main (int argc, char *argv[], char *envp[])
         if (ErrorCode == 0) {
           // printf ("Block %d received: %u\n",CntBlock,IQResult.NoOfSamples);
           // printf ("Block %d received\n",CntBlock);
+
+	  if (options.zmq) {
+
+	  }
 
           if (options.verbose) {
             printf ("Block %d received\n",CntBlock);
