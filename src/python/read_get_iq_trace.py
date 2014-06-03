@@ -134,7 +134,7 @@ def main (args):
     f_ch1, Pxx_den_ch1 = signal.welch(complex_signal_ch1,
                                       fs = sample_rate,
                                       scaling=args.analysis_mode,
-                                      nperseg=512)
+                                      nperseg=2048)
     # f_ch1, Pxx_den_ch1 = signal.periodogram(complex_signal_ch1,
     #                                         fs = sample_rate,
     #                                         scaling=args.analysis_mode)
@@ -149,7 +149,7 @@ def main (args):
         f_ch2, Pxx_den_ch2 = signal.welch(complex_signal_ch2,
                                           fs = sample_rate,
                                           scaling=args.analysis_mode,
-                                          nperseg=512)
+                                          nperseg=2048)
 
     figures = []
     plt.ion ()
