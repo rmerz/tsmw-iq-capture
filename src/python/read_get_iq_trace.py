@@ -140,19 +140,20 @@ def main (args):
                                           scaling=args.analysis_mode,
                                           nperseg=512)
 
-    plt.ion ()
-    plt.figure (1)
-    plt.plot (f_ch1, 10*np.log10 (Pxx_den_ch1))
-    plt.grid (True)
-    plt.title ('Channel 1')
-    plt.tight_layout ()
-    if number_of_channels == 2:
-        plt.figure (2)
-        plt.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
-        plt.grid (True)
-        plt.title ('Channel 2')
-        plt.tight_layout ()
-    input ('Press any key.')
+    
+    # plt.ion ()
+    # plt.figure (1)
+    # plt.plot (f_ch1, 10*np.log10 (Pxx_den_ch1))
+    # plt.grid (True)
+    # plt.title ('Channel 1')
+    # plt.tight_layout ()
+    # if number_of_channels == 2:
+    #     plt.figure (2)
+    #     plt.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
+    #     plt.grid (True)
+    #     plt.title ('Channel 2')
+    #     plt.tight_layout ()
+    # input ('Press any key.')
 
         
     
