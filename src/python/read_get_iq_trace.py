@@ -9,8 +9,9 @@ def setup_args():
     parser = argparse.ArgumentParser(description='Extract data from binary file obtained with get_iq.')
     parser.add_argument('filepath', type=str, help='File to open.')
     parser.add_argument('-a','--append', action='store_true', help='Append all measurement blocks.')
-    parser.add_argument('--plot_timeseries', action='store_true', help='Also plot time-series.')
-    parser.add_argument('--plot_iq_power', action='store_true', help='Also plot IQ power.')
+    parser.add_argument('--plot_timeseries', action='store_true', help='Plot time-series.')
+    parser.add_argument('--plot_spectral', action='store_true', help='Plot spectral analysis.')
+    parser.add_argument('--plot_iq_power', action='store_true', help='Plot IQ power.')
     parser.add_argument('--analysis_mode', type=str, default='spectrum', help='Frequency analysis mode. Default is \'spectrum\' (available is also \'density\'')
     parser.add_argument('-n','--number_of_blocks', type=int, help='Process that much blocks.')
     args   = parser.parse_args()
@@ -39,10 +40,10 @@ def decode_float64 (data,n=1):
 def decode_fe_freq (data):
     return np.fromfile (data,np.dtype ('uint64'), count = 2)
 
-def average_iq_power (real_lin,imag_lin):
+def average_iq_power_dB (real_lin,imag_lin):
     return 10*np.log10 (np.mean (np.power (real_lin,2.0) + np.power (imag_lin,2.0)))
 
-def sample_iq_power (real_lin,imag_lin):
+def sample_iq_power_dB (real_lin,imag_lin):
     return 10*np.log10 (np.power (real_lin,2.0) + np.power (imag_lin,2.0))
 
 def main (args):
@@ -94,11 +95,11 @@ def main (args):
         # Assuming two channels and scaling is in dBm, hence scaling lin is in mV
         real_lin_ch1 = real[:block_size]*scaling_lin[0]
         imag_lin_ch1 = imag[:block_size]*scaling_lin[0]
-        print (average_iq_power (real_lin_ch1,imag_lin_ch1))
+        print (average_iq_power_dB (real_lin_ch1,imag_lin_ch1))
         if number_of_channels > 1:
             real_lin_ch2 = real[block_size:]*scaling_lin[1]
             imag_lin_ch2 = imag[block_size:]*scaling_lin[1]
-            print (average_iq_power (real_lin_ch2,imag_lin_ch2))
+            print (average_iq_power_dB (real_lin_ch2,imag_lin_ch2))
 
         if args.append:
             real_lin_trace_ch1 = np.append (real_lin_trace_ch1,real_lin_ch1)
@@ -115,33 +116,21 @@ def main (args):
     f.close ()
     # We process at most two channels
     if args.append:
-        trace_ch1_iq_power = average_iq_power (real_lin_trace_ch1,imag_lin_trace_ch1)
-        print ('Channel 1 trace avg. IQ power: {}'.format (trace_ch1_iq_power))
+        trace_ch1_avg_iq_power = average_iq_power_dB (real_lin_trace_ch1,imag_lin_trace_ch1)
+
+        print ('Channel 1 trace avg. IQ power: {}'.format (trace_ch1_avg_iq_power))
         if number_of_channels == 2:
-            trace_ch2_iq_power = average_iq_power (real_lin_trace_ch2,imag_lin_trace_ch2)
-            print ('Channel 2 trace avg. IQ power: {}'.format (trace_ch2_iq_power))
+            trace_ch2_avg_iq_power = average_iq_power_dB (real_lin_trace_ch2,imag_lin_trace_ch2)
+
+            print ('Channel 2 trace avg. IQ power: {}'.format (trace_ch2_avg_iq_power))
 
 
-    # Display last block. And see 4.27 in
-    # http://www.ni.com/pdf/manuals/370192c.pdf for why spectrum
-    # versus density: PSD is PS / (1/sampling_rate * noise_bandwidth)
-    if not (args.analysis_mode == 'spectrum' or args.analysis_mode == 'density'):
-        print ('Invalid analysis mode.')
-        sys.exit (-1)
     if args.append:
         real_signal_ch1 = real_lin_trace_ch1
         imag_signal_ch1 = imag_lin_trace_ch1
     else:
         real_signal_ch1 = real_lin_ch1
         imag_signal_ch1 = imag_lin_ch1
-    complex_signal_ch1 = real_signal_ch1+np.complex(0,1)*imag_signal_ch1
-    f_ch1, Pxx_den_ch1 = signal.welch(complex_signal_ch1,
-                                      fs = sample_rate,
-                                      scaling=args.analysis_mode,
-                                      nperseg=2048)
-    # f_ch1, Pxx_den_ch1 = signal.periodogram(complex_signal_ch1,
-    #                                         fs = sample_rate,
-    #                                         scaling=args.analysis_mode)
     if number_of_channels == 2:
         if args.append:
             real_signal_ch2 = real_lin_trace_ch2
@@ -149,19 +138,37 @@ def main (args):
         else:
             real_signal_ch2 = real_lin_ch2
             imag_signal_ch2 = imag_lin_ch2
-        complex_signal_ch2 = real_signal_ch2+np.complex(0,1)*imag_signal_ch2
-        f_ch2, Pxx_den_ch2 = signal.welch(complex_signal_ch2,
+
+    # Display last block. And see 4.27 in
+    # http://www.ni.com/pdf/manuals/370192c.pdf for why spectrum
+    # versus density: PSD is PS / (1/sampling_rate * noise_bandwidth)
+    if args.plot_spectral:
+        if not (args.analysis_mode == 'spectrum' or args.analysis_mode == 'density'):
+            print ('Invalid analysis mode.')
+            sys.exit (-1)
+        complex_signal_ch1 = real_signal_ch1+np.complex(0,1)*imag_signal_ch1
+        f_ch1, Pxx_den_ch1 = signal.welch(complex_signal_ch1,
                                           fs = sample_rate,
                                           scaling=args.analysis_mode,
-                                          nperseg=2048)
+                                          nperseg=np.minimum(2048,len(complex_signal_ch1)))
+        # f_ch1, Pxx_den_ch1 = signal.periodogram(complex_signal_ch1,
+        #                                         fs = sample_rate,
+        #                                         scaling=args.analysis_mode)
+        if number_of_channels == 2:
+            complex_signal_ch2 = real_signal_ch2+np.complex(0,1)*imag_signal_ch2
+            f_ch2, Pxx_den_ch2 = signal.welch(complex_signal_ch2,
+                                              fs = sample_rate,
+                                              scaling=args.analysis_mode,
+                                              nperseg=np.minimum(2048,len(complex_signal_ch2)))
 
     figures = []
     plt.ion ()
-    figures.append (plt.figure ())
-    plt.plot (f_ch1, 10*np.log10 (Pxx_den_ch1))
-    plt.grid (True)
-    plt.title ('Channel 1: spectral analysis')
-    plt.tight_layout ()
+    if args.plot_spectral:
+        figures.append (plt.figure ())
+        plt.plot (f_ch1, 10*np.log10 (Pxx_den_ch1))
+        plt.grid (True)
+        plt.title ('Channel 1: spectral analysis')
+        plt.tight_layout ()
     if args.plot_timeseries:
         figures.append (plt.figure ())
         plt.plot (real_signal_ch1,'.-',c='b')
@@ -171,17 +178,18 @@ def main (args):
         plt.tight_layout ()
     if args.plot_iq_power:
         figures.append (plt.figure ())
-        plt.plot (sample_iq_power (real_signal_ch1,imag_signal_ch1),'.-',c='b')
+        plt.plot (sample_iq_power_dB (real_signal_ch1,imag_signal_ch1),'.-',c='b')
         plt.ylim (-120,-40)
         plt.grid (True)
         plt.title ('Channel 1: IQ power')
         plt.tight_layout ()
     if number_of_channels == 2:
-        figures.append (plt.figure ())
-        plt.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
-        plt.grid (True)
-        plt.title ('Channel 2: spectral analysis')
-        plt.tight_layout ()
+        if args.plot_spectral:
+            figures.append (plt.figure ())
+            plt.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
+            plt.grid (True)
+            plt.title ('Channel 2: spectral analysis')
+            plt.tight_layout ()
         if args.plot_timeseries:
             figures.append (plt.figure ())
             plt.plot (real_signal_ch2,'.-',c='b')
@@ -191,7 +199,7 @@ def main (args):
             plt.tight_layout ()
         if args.plot_iq_power:
             figures.append (plt.figure ())
-            plt.plot (sample_iq_power (real_signal_ch2,imag_signal_ch2),'.-',c='b')
+            plt.plot (sample_iq_power_dB (real_signal_ch2,imag_signal_ch2),'.-',c='b')
             plt.ylim (-120,-40)
             plt.grid (True)
             plt.title ('Channel 2: IQ power')
