@@ -8,7 +8,8 @@ from matplotlib import pylab as plt
 def setup_args():
     parser = argparse.ArgumentParser(description='Extract data from binary file obtained with get_iq.')
     parser.add_argument('filepath', type=str, help='File to open.')
-    parser.add_argument('--append', action='store_true', help='Append all measurement blocks.')
+    parser.add_argument('-a','--append', action='store_true', help='Append all measurement blocks.')
+    parser.add_argument('--plot_timeseries', action='store_true', help='Also plot time-series.')
     parser.add_argument('--analysis_mode', type=str, default='spectrum', help='Frequency analysis mode. Default is \'spectrum\' (available is also \'density\'')
     parser.add_argument('-n','--number_of_blocks', type=int, help='Process that much blocks.')
     args   = parser.parse_args()
@@ -108,6 +109,7 @@ def main (args):
         block_counter += 1
 
     f.close ()
+    # We process at most two channels
     if args.append:
         trace_ch1_iq_power = average_iq_power (real_lin_trace_ch1,imag_lin_trace_ch1)
         print ('Channel 1 trace avg. IQ power: {}'.format (trace_ch1_iq_power))
@@ -123,37 +125,60 @@ def main (args):
         print ('Invalid analysis mode.')
         sys.exit (-1)
     if args.append:
-        complex_signal_ch1 = real_lin_trace_ch1+np.complex(0,1)*imag_lin_trace_ch1
+        real_signal_ch1 = real_lin_trace_ch1
+        imag_signal_ch1 = imag_lin_trace_ch1
     else:
-        complex_signal_ch1 = real_lin_ch1+np.complex(0,1)*imag_lin_ch1
+        real_signal_ch1 = real_lin_ch1
+        imag_signal_ch1 = imag_lin_ch1
+    complex_signal_ch1 = real_signal_ch1+np.complex(0,1)*imag_signal_ch1
     f_ch1, Pxx_den_ch1 = signal.welch(complex_signal_ch1,
                                       fs = sample_rate,
                                       scaling=args.analysis_mode,
                                       nperseg=512)
     if number_of_channels == 2:
         if args.append:
-            complex_signal_ch2 = real_lin_trace_ch2+np.complex(0,1)*imag_lin_trace_ch2
+            real_signal_ch2 = real_lin_trace_ch2
+            imag_signal_ch2 = imag_lin_trace_ch2
         else:
-            complex_signal_ch2 = real_lin_ch2+np.complex(0,1)*imag_lin_ch2
+            real_signal_ch2 = real_lin_ch2
+            imag_signal_ch2 = imag_lin_ch2
+        complex_signal_ch2 = real_signal_ch2+np.complex(0,1)*imag_signal_ch2
         f_ch2, Pxx_den_ch2 = signal.welch(complex_signal_ch2,
                                           fs = sample_rate,
                                           scaling=args.analysis_mode,
                                           nperseg=512)
 
-    
-    # plt.ion ()
-    # plt.figure (1)
-    # plt.plot (f_ch1, 10*np.log10 (Pxx_den_ch1))
-    # plt.grid (True)
-    # plt.title ('Channel 1')
-    # plt.tight_layout ()
-    # if number_of_channels == 2:
-    #     plt.figure (2)
-    #     plt.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
-    #     plt.grid (True)
-    #     plt.title ('Channel 2')
-    #     plt.tight_layout ()
-    # input ('Press any key.')
+    figures = []
+    plt.ion ()
+    figures.append (plt.figure ())
+    plt.plot (f_ch1, 10*np.log10 (Pxx_den_ch1))
+    plt.grid (True)
+    plt.title ('Channel 1')
+    plt.tight_layout ()
+    if args.plot_timeseries:
+        figures.append (plt.figure ())
+        plt.plot (real_signal_ch1,'.-',c='b')
+        plt.plot (imag_signal_ch1,'.-',c='r')
+        plt.grid (True)
+        plt.title ('Channel 1')
+        plt.tight_layout ()
+    if number_of_channels == 2:
+        figures.append (plt.figure ())
+        plt.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
+        plt.grid (True)
+        plt.title ('Channel 2')
+        plt.tight_layout ()
+        if args.plot_timeseries:
+            figures.append (plt.figure ())
+            plt.plot (real_signal_ch2,'.-',c='b')
+            plt.plot (imag_signal_ch2,'.-',c='r')
+            plt.grid (True)
+            plt.title ('Channel 1')
+            plt.tight_layout ()
+    input ('Press any key.')
+    for fig in figures:
+        plt.close (fig)
+    return
 
         
     
