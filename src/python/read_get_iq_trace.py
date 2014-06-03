@@ -8,6 +8,8 @@ from matplotlib import pylab as plt
 def setup_args():
     parser = argparse.ArgumentParser(description='Extract data from binary file obtained with get_iq.')
     parser.add_argument('filepath', type=str, help='File to open.')
+    parser.add_argument('--append', type=str, help='Append all measurement blocks.')
+    parser.add_argument('-n','--number_of_blocks', type=int, help='Process that much blocks.')
     args   = parser.parse_args()
     return args
 
@@ -53,11 +55,18 @@ def main (args):
     print (number_of_channels_fe)
     number_of_channels = np.sum (number_of_channels_fe)
     block_size = decode_uint32 (f)
-    print (block_size)
+
+    if args.append:
+        real_lin_0 = np.array([],dtype='float64')
+        imag_lin_0 = np.array([],dtype='float64')
+
+    print ('Block size: {}'.format(block_size))
+    block_counter = 0
     while (True):
         start_time_iq = decode_uint64 (f)
         if len (start_time_iq) == 0:
             break
+        print ('Block {}'.format(block_counter))
         print (start_time_iq)  # StartTimeIQ
         sample_rate = decode_float64 (f)
         print ('Sampling rate:', sample_rate)  # Fsample
@@ -77,6 +86,10 @@ def main (args):
             real_lin_ch2 = real[block_size:]*scaling_lin[1]
             imag_lin_ch2 = imag[block_size:]*scaling_lin[1]
             print (average_iq_power (real_lin_ch2,imag_lin_ch2))
+
+        if args.number_of_blocks is not None and args.number_of_blocks == block_counter:
+            break
+        block_counter += 1
 
     # Display last block. And see 4.27 in
     # http://www.ni.com/pdf/manuals/370192c.pdf for why spectrum
