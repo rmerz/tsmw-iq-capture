@@ -135,6 +135,9 @@ def main (args):
                                       fs = sample_rate,
                                       scaling=args.analysis_mode,
                                       nperseg=512)
+    # f_ch1, Pxx_den_ch1 = signal.periodogram(complex_signal_ch1,
+    #                                         fs = sample_rate,
+    #                                         scaling=args.analysis_mode)
     if number_of_channels == 2:
         if args.append:
             real_signal_ch2 = real_lin_trace_ch2
