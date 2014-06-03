@@ -40,10 +40,10 @@ def decode_fe_freq (data):
     return np.fromfile (data,np.dtype ('uint64'), count = 2)
 
 def average_iq_power (real_lin,imag_lin):
-    return 10*np.log10 (np.mean (np.power (real_lin,2.0) + np.power (imag_lin[0],2.0)))
+    return 10*np.log10 (np.mean (np.power (real_lin,2.0) + np.power (imag_lin,2.0)))
 
 def sample_iq_power (real_lin,imag_lin):
-    return 10*np.log10 (np.power (real_lin,2.0) + np.power (imag_lin[0],2.0))
+    return 10*np.log10 (np.power (real_lin,2.0) + np.power (imag_lin,2.0))
 
 def main (args):
     print (args.filepath)
