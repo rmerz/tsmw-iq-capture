@@ -50,9 +50,13 @@ def sample_iq_power (real_lin,imag_lin):
     return np.power (real_lin,2.0) + np.power (imag_lin,2.0)
 
 def sample_iq_power_dB (real_lin,imag_lin):
-    return 10*np.log10 ( sample_iq_power (real_lin,imag_lin))
+    return 10*np.log10 (sample_iq_power (real_lin,imag_lin))
 
+def median_dB (x):
+    return 10*np.log10 (np.median (x))
 
+def percentile_dB (x,q):
+    return 10*np.log10 (np.percentile (x,q))
 
 def main (args):
     print (args.filepath)
@@ -125,13 +129,20 @@ def main (args):
     # We process at most two channels
     if args.append:
         trace_ch1_avg_iq_power = average_iq_power_dB (real_lin_trace_ch1,imag_lin_trace_ch1)
+        trace_ch1_iq_power = sample_iq_power (real_lin_trace_ch1,imag_lin_trace_ch1)
 
         print ('Channel 1 trace avg. IQ power: {}'.format (trace_ch1_avg_iq_power))
+        print ('Channel 1 trace IQ power stat: {} {} {}'.format (percentile_dB (trace_ch1_iq_power,5),
+                                                                 median_dB (trace_ch1_iq_power),
+                                                                 percentile_dB (trace_ch1_iq_power,95)))
         if number_of_channels == 2:
             trace_ch2_avg_iq_power = average_iq_power_dB (real_lin_trace_ch2,imag_lin_trace_ch2)
+            trace_ch2_iq_power = sample_iq_power (real_lin_trace_ch2,imag_lin_trace_ch2)
 
             print ('Channel 2 trace avg. IQ power: {}'.format (trace_ch2_avg_iq_power))
-
+            print ('Channel 2 trace IQ power stat: {} {} {}'.format (percentile_dB (trace_ch2_iq_power,5),
+                                                                     median_dB (trace_ch2_iq_power),
+                                                                     percentile_dB (trace_ch2_iq_power,95)))
 
     if args.append:
         real_signal_ch1 = real_lin_trace_ch1
