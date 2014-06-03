@@ -40,11 +40,19 @@ def decode_float64 (data,n=1):
 def decode_fe_freq (data):
     return np.fromfile (data,np.dtype ('uint64'), count = 2)
 
+def average_iq_power (real_lin,imag_lin):
+    return np.mean (np.power (real_lin,2.0) + np.power (imag_lin,2.0))
+
 def average_iq_power_dB (real_lin,imag_lin):
-    return 10*np.log10 (np.mean (np.power (real_lin,2.0) + np.power (imag_lin,2.0)))
+    return 10*np.log10 (average_iq_power (real_lin,imag_lin))
+
+def sample_iq_power (real_lin,imag_lin):
+    return np.power (real_lin,2.0) + np.power (imag_lin,2.0)
 
 def sample_iq_power_dB (real_lin,imag_lin):
-    return 10*np.log10 (np.power (real_lin,2.0) + np.power (imag_lin,2.0))
+    return 10*np.log10 ( sample_iq_power (real_lin,imag_lin))
+
+
 
 def main (args):
     print (args.filepath)
