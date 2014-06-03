@@ -10,6 +10,7 @@ def setup_args():
     parser.add_argument('filepath', type=str, help='File to open.')
     parser.add_argument('-a','--append', action='store_true', help='Append all measurement blocks.')
     parser.add_argument('--plot_timeseries', action='store_true', help='Also plot time-series.')
+    parser.add_argument('--plot_iq_power', action='store_true', help='Also plot IQ power.')
     parser.add_argument('--analysis_mode', type=str, default='spectrum', help='Frequency analysis mode. Default is \'spectrum\' (available is also \'density\'')
     parser.add_argument('-n','--number_of_blocks', type=int, help='Process that much blocks.')
     args   = parser.parse_args()
@@ -39,7 +40,10 @@ def decode_fe_freq (data):
     return np.fromfile (data,np.dtype ('uint64'), count = 2)
 
 def average_iq_power (real_lin,imag_lin):
-    return 10*np.log10(np.mean (np.power (real_lin,2.0) + np.power (imag_lin[0],2.0)))
+    return 10*np.log10 (np.mean (np.power (real_lin,2.0) + np.power (imag_lin[0],2.0)))
+
+def sample_iq_power (real_lin,imag_lin):
+    return 10*np.log10 (np.power (real_lin,2.0) + np.power (imag_lin[0],2.0))
 
 def main (args):
     print (args.filepath)
@@ -156,27 +160,41 @@ def main (args):
     figures.append (plt.figure ())
     plt.plot (f_ch1, 10*np.log10 (Pxx_den_ch1))
     plt.grid (True)
-    plt.title ('Channel 1')
+    plt.title ('Channel 1: spectral analysis')
     plt.tight_layout ()
     if args.plot_timeseries:
         figures.append (plt.figure ())
         plt.plot (real_signal_ch1,'.-',c='b')
         plt.plot (imag_signal_ch1,'.-',c='r')
         plt.grid (True)
-        plt.title ('Channel 1')
+        plt.title ('Channel 1: time-series')
+        plt.tight_layout ()
+    if args.plot_iq_power:
+        figures.append (plt.figure ())
+        plt.plot (sample_iq_power (real_signal_ch1,imag_signal_ch1),'.-',c='b')
+        plt.ylim (-120,-40)
+        plt.grid (True)
+        plt.title ('Channel 1: IQ power')
         plt.tight_layout ()
     if number_of_channels == 2:
         figures.append (plt.figure ())
         plt.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
         plt.grid (True)
-        plt.title ('Channel 2')
+        plt.title ('Channel 2: spectral analysis')
         plt.tight_layout ()
         if args.plot_timeseries:
             figures.append (plt.figure ())
             plt.plot (real_signal_ch2,'.-',c='b')
             plt.plot (imag_signal_ch2,'.-',c='r')
             plt.grid (True)
-            plt.title ('Channel 1')
+            plt.title ('Channel 2: time-series')
+            plt.tight_layout ()
+        if args.plot_iq_power:
+            figures.append (plt.figure ())
+            plt.plot (sample_iq_power (real_signal_ch2,imag_signal_ch2),'.-',c='b')
+            plt.ylim (-120,-40)
+            plt.grid (True)
+            plt.title ('Channel 2: IQ power')
             plt.tight_layout ()
     input ('Press any key.')
     for fig in figures:
