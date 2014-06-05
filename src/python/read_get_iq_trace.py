@@ -198,7 +198,7 @@ def main (args):
     if args.plot_iq_power:
         figures.append (plt.figure ())
         plt.plot (sample_iq_power_dB (real_signal_ch1,imag_signal_ch1),'.-',c='b')
-        plt.ylim (-120,-40)
+        plt.ylim (-100,-30)
         plt.grid (True)
         plt.title ('Channel 1: IQ power')
         plt.tight_layout ()
@@ -219,7 +219,7 @@ def main (args):
         if args.plot_iq_power:
             figures.append (plt.figure ())
             plt.plot (sample_iq_power_dB (real_signal_ch2,imag_signal_ch2),'.-',c='b')
-            plt.ylim (-120,-40)
+            plt.ylim (-100,-30)
             plt.grid (True)
             plt.title ('Channel 2: IQ power')
             plt.tight_layout ()

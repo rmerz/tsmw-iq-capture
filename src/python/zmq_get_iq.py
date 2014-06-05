@@ -9,7 +9,7 @@ from matplotlib import pylab as plt
 class Plotter ():
     def __init__ (self):
         plt.figure (1)
-        plt.ylim ([-120,-50])
+        plt.ylim ([-100,-30])
         plt.ion ()
 
     def update_iq_power_plot_single (self,iq_power):
@@ -17,7 +17,7 @@ class Plotter ():
         plt.cla ()
         plt.plot (iq_power,'d-',color='b')
         plt.grid (True)
-        plt.ylim ([-120,-50])
+        plt.ylim ([-100,-30])
         plt.tight_layout ()
         plt.show ()
         plt.pause (0.00001)
@@ -29,7 +29,7 @@ class Plotter ():
         plt.plot (np.arange(0,len(iq_power_2),1),iq_power_2,'o-',color='r')
         plt.hold (False)
         plt.grid (True)
-        plt.ylim ([-120,-50])
+        plt.ylim ([-100,-30])
         plt.tight_layout ()
         plt.show ()
         plt.pause (0.00001)
