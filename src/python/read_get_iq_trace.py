@@ -93,12 +93,12 @@ def main (args):
         if len (start_time_iq) == 0:
             break
         print ('Block {}'.format(block_counter))
-        print (start_time_iq)  # StartTimeIQ
+        #print (start_time_iq)  # StartTimeIQ
         sample_rate = decode_float64 (f)
-        print ('Sampling rate:', sample_rate)  # Fsample
+        #print ('Sampling rate:', sample_rate)  # Fsample
         scaling = decode_int16 (f,n=number_of_channels)  # Scaling
         scaling_lin = np.power (10,scaling/2000)
-        print (scaling)
+        #print (scaling_lin)
         real = np.fromfile (f,np.dtype ('double'), count = number_of_channels*block_size)
         imag = np.fromfile (f,np.dtype ('double'), count = number_of_channels*block_size)
         # print (real[0])
@@ -107,20 +107,20 @@ def main (args):
         # Assuming two channels and scaling is in dBm, hence scaling lin is in mV
         real_lin_ch1 = real[:block_size]*scaling_lin[0]
         imag_lin_ch1 = imag[:block_size]*scaling_lin[0]
-        print (average_iq_power_dB (real_lin_ch1,imag_lin_ch1))
+        #print (average_iq_power_dB (real_lin_ch1,imag_lin_ch1))
         if number_of_channels > 1:
             real_lin_ch2 = real[block_size:]*scaling_lin[1]
             imag_lin_ch2 = imag[block_size:]*scaling_lin[1]
-            print (average_iq_power_dB (real_lin_ch2,imag_lin_ch2))
+            #print (average_iq_power_dB (real_lin_ch2,imag_lin_ch2))
 
         if args.append:
             real_lin_trace_ch1 = np.append (real_lin_trace_ch1,real_lin_ch1)
             imag_lin_trace_ch1 = np.append (imag_lin_trace_ch1,imag_lin_ch1)
-            print ('Channel 1 trace length is {}/{}'.format (len(real_lin_trace_ch1),len(imag_lin_trace_ch1)))
+            #print ('Channel 1 trace length is {}/{}'.format (len(real_lin_trace_ch1),len(imag_lin_trace_ch1)))
             if number_of_channels == 2:
                 real_lin_trace_ch2 = np.append (real_lin_trace_ch2,real_lin_ch2)
                 imag_lin_trace_ch2 = np.append (imag_lin_trace_ch2,imag_lin_ch2)
-                print ('Channel 2 trace length is {}/{}'.format (len(real_lin_trace_ch1),len(imag_lin_trace_ch1)))
+                #print ('Channel 2 trace length is {}/{}'.format (len(real_lin_trace_ch1),len(imag_lin_trace_ch1)))
         if args.number_of_blocks is not None and args.number_of_blocks == block_counter:
             break
         block_counter += 1
