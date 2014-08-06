@@ -160,7 +160,7 @@ class MimoArbWaveForm():
         idx = idx1+idx2-Nprep
         c3i = idx1+idx2-Nprep-1+mavg
         # get the phase at the start index and calculate the frequency offset
-        fo_meas = -np.angle(np.mean(corr3[c3i:c3i+mavg]))/(np.pi/mavg3)*self._FS
+        fo_meas = -np.angle(np.mean(corr3[c3i:c3i+mavg]))/(np.pi/2*self._FFT)*self._FS
         return idx, fo_meas
 
     def freq_offs_est(self,iqcpx1,iqcpx2):
