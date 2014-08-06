@@ -4,6 +4,7 @@ import argparse, sys
 import numpy as np
 from scipy import signal
 from matplotlib import pylab as plt
+import arbmimo
 
 def setup_args():
     parser = argparse.ArgumentParser(description='Extract data from binary file obtained with get_iq.')
@@ -12,6 +13,7 @@ def setup_args():
     parser.add_argument('--plot_timeseries', action='store_true', help='Plot time-series.')
     parser.add_argument('--plot_spectral', action='store_true', help='Plot spectral analysis.')
     parser.add_argument('--plot_iq_power', action='store_true', help='Plot IQ power.')
+    parser.add_argument('--calc_rsrp', action='store_true', help='Calculate the MIMO custom waveform RSRP.')
     parser.add_argument('--analysis_mode', type=str, default='spectrum', help='Frequency analysis mode. Default is \'spectrum\' (available is also \'density\'')
     parser.add_argument('-n','--number_of_blocks', type=int, help='Process that much blocks.')
     args   = parser.parse_args()
@@ -223,6 +225,28 @@ def main (args):
             plt.grid (True)
             plt.title ('Channel 2: IQ power')
             plt.tight_layout ()
+    if args.calc_rsrp:
+        mimo = arbmimo.MimoArbWaveForm()
+        if number_of_channels == 1:
+            pwr,rsrp,snr,foffs = mimo.sync_pwr_freq_est(real_signal_ch1,imag_signal_ch1,
+                                                        real_signal_ch1,imag_signal_ch1,
+                                                        block_size[0],block_counter)
+            print ('')
+            print ('               Channel 1')
+            print ('Symbol power: {0:7.2f} dBm'.format(pwr[0]))
+            print ('RSRP:         {0:7.2f} dBm'.format(rsrp[0]))
+            print ('SNR:          {0:7.2f} dB '.format(snr[0]))
+            print ('Estimated frequency offset: {0:.2f} Hz'.format(foffs))
+        if number_of_channels == 2:
+            pwr,rsrp,snr,foffs = mimo.sync_pwr_freq_est(real_signal_ch1,imag_signal_ch1,
+                                                        real_signal_ch2,imag_signal_ch2,
+                                                        block_size[0],block_counter)
+            print ('')
+            print ('               Channel 1   Channel 2')
+            print ('Symbol power: {0:7.2f} dBm {1:7.2f} dBm'.format(pwr[0],pwr[1]))
+            print ('RSRP:         {0:7.2f} dBm {1:7.2f} dBm'.format(rsrp[0],rsrp[1]))
+            print ('SNR:          {0:7.2f} dB  {1:7.2f} dB '.format(snr[0],snr[1]))
+            print ('Estimated frequency offset: {0:.2f} Hz'.format(foffs))
     input ('Press any key.')
     for fig in figures:
         plt.close (fig)
