@@ -118,6 +118,7 @@ class MimoArbWaveForm():
 
     def mimo_sync(self,re1,im1,re2,im2):
         """ Synchronize to frame and estimate a rough frequency offset
+        With a sampling frequency of 5 MHz, maximum +/-156.25 kHz can be detected.
 
         Arguments:
         re1, im1: sample vectors with real and imaginary component of RX 1
