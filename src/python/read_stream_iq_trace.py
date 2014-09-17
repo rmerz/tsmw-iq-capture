@@ -3,88 +3,164 @@
 import argparse
 import numpy as np
 from scipy import signal
-from matplotlib import pylab as plt
+from matplotlib.pylab import figure, tight_layout, show
+import decoder
 
 def setup_args():
     parser = argparse.ArgumentParser(description='Extract data from binary file obtained with extract_iq.')
-    parser.add_argument('filepath', type=str, help='File to open.')
+    parser.add_argument('filepath', nargs='+', type=str, help='File to open.')
+    parser.add_argument('-a','--aggregate', action='store_true', help='Aggregate all blocks together.')
     parser.add_argument('--header_length', type=int, default=512, help='Length of the text header (default is 512)')
     args   = parser.parse_args()
     return args
 
-def decode_header (header):
-    eos = 0
-    for b in header:
-        if b == 0:
-            break
-        eos = eos +1
-    return header[:eos].decode ()
+def spawn_plot ():
+    ax = figure ().add_subplot (111)
+    return ax
 
-def decode_int16 (data,n=1):
-    return np.fromfile (data,np.dtype ('int16'), count = n)
+def plot_block_complex (ax,real,imag,linestyle='-'):
+    print ('Block length: {:d}'.format (len (real)))
 
-def decode_uint32 (data,n=1):
-    return np.fromfile (data,np.dtype ('uint32'), count = n)
+    # Plot real and imaginary part
+    ax.plot (real,
+             c='m',ls=linestyle,label='RE')
+    ax.plot (imag,
+             c='Orange',ls=linestyle,label='IM')
+    ax.grid (True)
+    ax.set_title ('Real and imaginary part plot')
+    ax.legend (loc='best')
+    tight_layout ()
 
-def decode_uint64 (data,n=1):
-    return np.fromfile (data,np.dtype ('uint64'), count = n)
+def plot_block_angle (ax,real,imag,color='m'):
+    print ('Block length: {:d}'.format (len (real)))
+    # Plot angle
+    ax.plot (np.angle (real+1j*imag, deg=True),
+             c=color)
+    ax.grid (True)
+    ax.set_title ('Complex angle plot')
+    tight_layout ()
 
-def decode_float64 (data,n=1):
-    return np.fromfile (data,np.dtype ('float64'), count = n)
+def plot_block_magnitude (ax,real,imag):
+    print ('Block length: {:d}'.format (len (real)))
+    mag = np.sqrt (real**2.0+imag**2.0)
+    print (len (mag))
+    ax.plot (mag,
+             c='m')
+    ax.grid (True)
+    tight_layout ()
 
-def decode_fe_freq (data):
-    return np.fromfile (data,np.dtype ('uint64'), count = 2)
+def plot_block_iq_power (ax,real,imag,color='m'):
+    print ('Block length: {:d}'.format (len (real)))
+    iq_power = 10*np.log10( np.power (real,2.0) + np.power (imag,2.0))
+    ax.plot (iq_power,
+             c=color)
+    ax.grid (True)
+    ax.set_ylim ([-40,-10])
+    ax.set_title ('IQ power')
+    tight_layout ()
 
-def main (args):
-    print (args.filepath)
 
-    f = open (args.filepath,'rb')
+def plot_block_spectrum (ax,real,imag,sample_rate,color='m'):
+    print ('Block length: {:d}'.format (len (real)))
+    # Plot spectrum analysis
+    # f, Pxx_den = signal.periodogram(real+np.complex(0,1)*imag, nfft=2048)
+    f, Pxx_den = signal.welch(real+np.complex(0,1)*imag,
+                              fs = sample_rate,
+                              #scaling='density',
+                              scaling='spectrum',
+                              nperseg=4096)
+    ax.plot (f, 10*np.log10 (Pxx_den),
+             c=color)
+    # plt.ylim ([1e-11, 1e-5])
+    ax.grid (True)
+    tight_layout ()
+
+
+def open_stream_trace (filepath,header_length):
+    f = open (filepath,'rb')
 
     # This assumes you already know the length of the header
-    header = decode_header (f.read (args.header_length))
+    header = decoder.decode_header (f.read (header_length))
     print ('Header: ',header)
 
-    FE = decode_fe_freq (f)
+    return f
+
+def decode_stream_trace (f,aggregate=False):
+    FE = decoder.decode_fe_freq (f)
     print ('Front-end frequencies: {}'.format (FE))
-    number_of_channels = decode_uint32 (f,2)
+    number_of_channels = decoder.decode_uint32 (f,2)
     print ('Number of channels: {}'.format (number_of_channels))
-    block_size = decode_uint32 (f)
+    block_size = decoder.decode_uint32 (f)
     print ('Block size: {}'.format (block_size))
+    if aggregate:
+        real_scaled_full = np.array ([])
+        imag_scaled_full = np.array ([])
+    k = 0
     while (True):
+        print ('Block {:d}'.format (k))
+        k += 1
         # This assumes you know what to expect
-        start_time_iq = decode_uint64 (f)
+        start_time_iq = decoder.decode_uint64 (f)
         if len (start_time_iq) == 0:
             break
         print (start_time_iq)
-        sample_rate = decode_float64 (f)
+        sample_rate = decoder.decode_float64 (f)
         print (sample_rate)
-        scaling = decode_int16 (f,n=1)  # Scaling
+        scaling = decoder.decode_int16 (f,n=1)  # Scaling
         print (scaling)
-        real = decode_float64 (f,n=block_size) # Real
-        imag = decode_float64 (f,n=block_size) # Real
+        real = decoder.decode_float64 (f,n=block_size) # Real
+        imag = decoder.decode_float64 (f,n=block_size) # Real
         print (real[0])
         print (imag[0])
 
         scaling_lin = np.power (10,scaling/2000)
         print (10*np.log10(np.mean (np.power (real*scaling_lin,2.0) + np.power (imag*scaling_lin,2.0))))
 
+        real_scaled = real*scaling_lin
+        imag_scaled = imag*scaling_lin
+        if aggregate:
+            real_scaled_full = np.concatenate ((real_scaled_full,real_scaled))
+            imag_scaled_full = np.concatenate ((imag_scaled_full,imag_scaled))
+    if aggregate:
+        return real_scaled_full,imag_scaled_full,sample_rate
+    else:
+        return real_scaled,imag_scaled,sample_rate
+
+def main (args):
+    print (args.filepath)
+
+    f = open_stream_trace (args.filepath[0],args.header_length)
+    real_scaled,imag_scaled,sample_rate = decode_stream_trace (f,args.aggregate)
+
+    if len (args.filepath) > 1:
+        f = open_stream_trace (args.filepath[1],args.header_length)
+        real_scaled_1,imag_scaled_1,sample_rate_1 = decode_stream_trace (f,args.aggregate)
+        
+
     # Plot the last block
-    real_scaled = real*scaling_lin
-    imag_scaled = imag*scaling_lin
+    ax = spawn_plot ()
+    plot_block_complex (ax,real_scaled,imag_scaled)
+    if len (args.filepath) > 1:
+        plot_block_complex (ax,real_scaled_1,imag_scaled_1,linestyle='--')
+    ax = spawn_plot ()
+    plot_block_angle (ax,real_scaled,imag_scaled)
+    if len (args.filepath) > 1:
+        plot_block_angle (ax,real_scaled_1,imag_scaled_1,color='b')
+    # ax = spawn_plot ()
+    # plot_block_magnitude (ax,real_scaled,imag_scaled)
+    ax = spawn_plot ()
+    plot_block_iq_power (ax,real_scaled,imag_scaled)
+    if len (args.filepath) > 1:
+        plot_block_iq_power (ax,real_scaled_1,imag_scaled_1,color='b')
+    ax = spawn_plot ()
+    plot_block_spectrum (ax,real_scaled,imag_scaled,sample_rate)
+    if len (args.filepath) > 1:
+        plot_block_spectrum (ax,real_scaled_1,imag_scaled_1,sample_rate_1,color='b')
 
-    # f, Pxx_den = signal.periodogram(real_scaled+np.complex(0,1)*imag_scaled, nfft=2048)
-    f, Pxx_den = signal.welch(real_scaled+np.complex(0,1)*imag_scaled,
-                              fs = sample_rate,
-                              #scaling='density',
-                              scaling='spectrum',
-                              nperseg=4096)
-
-    plt.ion ()
-    plt.plot (f, 10*np.log10 (Pxx_den))
-    # plt.ylim ([1e-11, 1e-5])
-    plt.grid (True)
-    plt.tight_layout ()
-    input ('Press any key.')
+    if len (args.filepath) > 1:
+        ax = spawn_plot ()
+        plot_block_iq_power (ax,real_scaled+real_scaled_1,imag_scaled+imag_scaled_1,color='Violet')
+    show ()
 
 if __name__ == '__main__':
     main (setup_args ())

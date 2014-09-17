@@ -4,6 +4,7 @@ import argparse, sys
 import numpy as np
 from scipy import signal
 from matplotlib import pylab as plt
+import decoder
 import arbmimo
 
 def setup_args():
@@ -18,29 +19,6 @@ def setup_args():
     parser.add_argument('-n','--number_of_blocks', type=int, help='Process that much blocks.')
     args   = parser.parse_args()
     return args
-
-def decode_header (header):
-    eos = 0
-    for b in header:
-        if b == 0:
-            break
-        eos = eos +1
-    return header[:eos].decode ()
-
-def decode_int16 (data,n=1):
-    return np.fromfile (data,np.dtype ('int16'), count = n)
-
-def decode_uint32 (data,n=1):
-    return np.fromfile (data,np.dtype ('uint32'), count = n)
-
-def decode_uint64 (data,n=1):
-    return np.fromfile (data,np.dtype ('uint64'), count = n)
-
-def decode_float64 (data,n=1):
-    return np.fromfile (data,np.dtype ('d8'), count = n)
-
-def decode_fe_freq (data):
-    return np.fromfile (data,np.dtype ('uint64'), count = 2)
 
 def average_iq_power (real_lin,imag_lin):
     return np.mean (np.power (real_lin,2.0) + np.power (imag_lin,2.0))
@@ -66,16 +44,16 @@ def main (args):
     f = open (args.filepath,'rb')
 
     # This assumes you already know the length of the header
-    header = decode_header (f.read (512))
+    header = decoder.decode_header (f.read (512))
     print (header)
     # This assumes you know what to expect
-    fe1,fe2 = decode_fe_freq (f)
+    fe1,fe2 = decoder.decode_fe_freq (f)
     print (fe1)
     print (fe2)
-    number_of_channels_fe = decode_uint32 (f,2)
+    number_of_channels_fe = decoder.decode_uint32 (f,2)
     print (number_of_channels_fe)
     number_of_channels = np.sum (number_of_channels_fe)
-    block_size = decode_uint32 (f)
+    block_size = decoder.decode_uint32 (f)
 
     if args.append:
         real_lin_trace_ch1 = np.array([])
@@ -91,14 +69,14 @@ def main (args):
     print ('Block size: {}'.format(block_size))
     block_counter = 1
     while (True):
-        start_time_iq = decode_uint64 (f)
+        start_time_iq = decoder.decode_uint64 (f)
         if len (start_time_iq) == 0:
             break
         print ('Block {}'.format(block_counter))
         #print (start_time_iq)  # StartTimeIQ
-        sample_rate = decode_float64 (f)
+        sample_rate = decoder.decode_float64 (f)
         #print ('Sampling rate:', sample_rate)  # Fsample
-        scaling = decode_int16 (f,n=number_of_channels)  # Scaling
+        scaling = decoder.decode_int16 (f,n=number_of_channels)  # Scaling
         scaling_lin = np.power (10,scaling/2000)
         #print (scaling_lin)
         real = np.fromfile (f,np.dtype ('double'), count = number_of_channels*block_size)
