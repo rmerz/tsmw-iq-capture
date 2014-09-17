@@ -10,6 +10,7 @@ def setup_args():
     parser = argparse.ArgumentParser(description='Extract data from binary file obtained with extract_iq.')
     parser.add_argument('filepath', nargs='+', type=str, help='File to open.')
     parser.add_argument('-a','--aggregate', action='store_true', help='Aggregate all blocks together.')
+    parser.add_argument('-n','--number_of_blocks', type=int, help='Number of blocks to parse (default is all).')
     parser.add_argument('--header_length', type=int, default=512, help='Length of the text header (default is 512)')
     args   = parser.parse_args()
     return args
@@ -38,6 +39,8 @@ def plot_block_angle (ax,real,imag,color='m'):
              c=color)
     ax.grid (True)
     ax.set_title ('Complex angle plot')
+    ax.set_ylim ([-180,180])
+    ax.set_yticks (np.arange (-180,181,20))
     tight_layout ()
 
 def plot_block_magnitude (ax,real,imag):
@@ -85,7 +88,7 @@ def open_stream_trace (filepath,header_length):
 
     return f
 
-def decode_stream_trace (f,aggregate=False):
+def decode_stream_trace (f,number_of_blocks=None,aggregate=False):
     FE = decoder.decode_fe_freq (f)
     print ('Front-end frequencies: {}'.format (FE))
     number_of_channels = decoder.decode_uint32 (f,2)
@@ -121,6 +124,8 @@ def decode_stream_trace (f,aggregate=False):
         if aggregate:
             real_scaled_full = np.concatenate ((real_scaled_full,real_scaled))
             imag_scaled_full = np.concatenate ((imag_scaled_full,imag_scaled))
+        if number_of_blocks is not None and k == number_of_blocks:
+            break
     if aggregate:
         return real_scaled_full,imag_scaled_full,sample_rate
     else:
@@ -130,11 +135,11 @@ def main (args):
     print (args.filepath)
 
     f = open_stream_trace (args.filepath[0],args.header_length)
-    real_scaled,imag_scaled,sample_rate = decode_stream_trace (f,args.aggregate)
+    real_scaled,imag_scaled,sample_rate = decode_stream_trace (f,args.number_of_blocks,args.aggregate)
 
     if len (args.filepath) > 1:
         f = open_stream_trace (args.filepath[1],args.header_length)
-        real_scaled_1,imag_scaled_1,sample_rate_1 = decode_stream_trace (f,args.aggregate)
+        real_scaled_1,imag_scaled_1,sample_rate_1 = decode_stream_trace (f,args.number_of_blocks,args.aggregate)
         
 
     # Plot the last block
