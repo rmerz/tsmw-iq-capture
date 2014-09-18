@@ -1,8 +1,9 @@
 #include "util.h"
 
-#include <iostream>
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <ctime>
+#include <iostream>
 
 void
 Util::printLastError (int ErrorCode)
@@ -114,4 +115,32 @@ Util::get_average_iq_power (short scaling, double* real, double* imag,
   scaling_lin_mV = std::pow(10,(double)scaling/100/20);
   // return 10*std::log10(power_sum/(2*blockSize))+20*std::log10(scaling_lin_mV);
   return 10*std::log10(power_sum/(blockSize))+20*std::log10(scaling_lin_mV);
+}
+
+double
+Util::get_angle (double real, double imag)
+{
+  return std::atan2 (real,imag)*180/M_PI;
+}
+
+void
+Util::get_average_iq_power_and_angle (double* result,
+				      short scaling, double* real, double* imag,
+				      unsigned int blockSize)
+{
+  double scaling_lin_mV;
+  double power_sum = 0;
+  double angle_sum = 0;
+  double angle = 0;
+
+  for (unsigned int k = 0; k < blockSize; k++ ) {
+    power_sum = power_sum +
+      std::pow(real[k],2) +
+      std::pow(imag[k],2);
+    angle_sum = angle_sum +
+      std::atan2 (real[k],imag[k]);
+  }
+  scaling_lin_mV = std::pow(10,(double)scaling/100/20);
+  result[0] = 10*std::log10(power_sum/(blockSize))+20*std::log10(scaling_lin_mV);
+  result[1] = (angle_sum/blockSize)*180/M_PI;
 }

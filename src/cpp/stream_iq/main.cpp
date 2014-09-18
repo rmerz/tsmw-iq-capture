@@ -318,7 +318,10 @@ main (int argc, char *argv[], char *envp[])
           // Continuously get and process streaming data until key pressed
           unsigned int CntBlock = 0;
           double iq_power = 0;
-          double iq_average_power = 0;
+	  double angle = 0;
+          // double iq_average_power = 0;
+	  double* result;
+	  result = (double*) malloc (2 * sizeof(double));
           unsigned int channel_offset = 0;
           do {
             // Get streaming data, wait for a stream data block up to
@@ -346,21 +349,27 @@ main (int argc, char *argv[], char *envp[])
                 iq_power = util.get_iq_power (pScaling[CntChannel],
                                               pReal[channel_offset],
                                               pImag[channel_offset]);
+		angle = util.get_angle (pReal[channel_offset],pImag[channel_offset]);
                 std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
-                          << " (first sample IQ power): "
-                          << iq_power << " dBm" << std::endl;
+                          << " (first sample IQ power/angle): "
+                          << iq_power << " dBm, " << angle << " deg." << std::endl;
 
                 if (pOverFlow[CntChannel] > 0)
                   std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels << " OVERFLOW: " << pOverFlow[CntChannel] << std::endl;
 
                 // Average power over all samples
-                iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
-                                                              &pReal[channel_offset],
-                                                              &pImag[channel_offset],
-                                                              MeasCtrl.NoOfSamples);
+		util.get_average_iq_power_and_angle (result,
+						     pScaling[CntChannel],
+						     &pReal[channel_offset],
+						     &pImag[channel_offset],
+						     MeasCtrl.NoOfSamples);
+                // iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
+                //                                               &pReal[channel_offset],
+                //                                               &pImag[channel_offset],
+                //                                               MeasCtrl.NoOfSamples);
                 std::cout << "Channel: " << CntChannel+1 << " / " << NoOfChannels
-                          << " (avg. IQ power): "
-                          << iq_average_power << " dBm" << std::endl;
+                          << " (avg. IQ power/angle): "
+                          << result[0] << " dBm, " << result[1] << " deg." << std::endl;
               }
             } else {
               util.printLastError (ErrorCode);

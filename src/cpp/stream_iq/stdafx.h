@@ -6,12 +6,11 @@
 #pragma once
 
 #include <windows.h>
+
 #include <conio.h>
 #include <assert.h>
 #include <iomanip>
 #include <fstream>
-#include <cmath>
-
 #include <iostream>
 #include <tchar.h>
 

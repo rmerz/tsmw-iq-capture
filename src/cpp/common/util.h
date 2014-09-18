@@ -15,4 +15,8 @@ public:
   double get_iq_power (short scaling, double, double);
   double get_average_iq_power (short, double*, double*,
                                unsigned int);
+  double get_angle (double, double);
+  void get_average_iq_power_and_angle (double*,
+				       short, double*, double*,
+				       unsigned int);
 };

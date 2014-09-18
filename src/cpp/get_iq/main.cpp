@@ -452,7 +452,10 @@ main (int argc, char *argv[], char *envp[])
       // Continuously get and process data until key pressed
       unsigned int CntBlock = 0;
       double iq_power = 0;
-      double iq_average_power = 0;
+      double angle = 0;
+      // double iq_average_power = 0;
+      double* result;
+      result = (double*) malloc (2 * sizeof (double));
       unsigned int channel_offset = 0;
       unsigned int msg_offset = 0;
       do {
@@ -547,21 +550,27 @@ main (int argc, char *argv[], char *envp[])
               iq_power = util.get_iq_power (pScaling[CntChannel],
                                             pReal[channel_offset],
                                             pImag[channel_offset]);
-              printf ("Channel %u/%u: (first sample IQ power) %.2f dBm\n",
+              angle = util.get_angle (pReal[channel_offset],pImag[channel_offset]);
+              printf ("Channel %u/%u: (first sample IQ power/angle) %.2f dBm, %.2f deg.\n",
                       CntChannel+1,NoOfChannels,
-                      iq_power);
+                      iq_power,angle);
 
               if (pOverFlow[CntChannel] > 0)
                 printf ("Channel %u/%u: (OVERFLOW) %lu\n",pOverFlow[CntChannel]);
 
               // Average power over all samples
-              iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
-                                                            &pReal[channel_offset],
-                                                            &pImag[channel_offset],
-                                                            MeasCtrl.NoOfSamples);
-              printf ("Channel %u/%u: (avg. IQ power) %.2f dBm\n",
+              util.get_average_iq_power_and_angle (result,
+						   pScaling[CntChannel],
+						   &pReal[channel_offset],
+						   &pImag[channel_offset],
+						   MeasCtrl.NoOfSamples);
+              // iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
+              //                                               &pReal[channel_offset],
+              //                                               &pImag[channel_offset],
+              //                                               MeasCtrl.NoOfSamples);
+              printf ("Channel %u/%u: (avg. IQ power/angle) %.2f dBm, %.2f deg.\n",
                       CntChannel+1,NoOfChannels,
-                      iq_average_power);
+                      result[0],result[1]);
             }
           }
           if (options.fileOutputFlag) {
