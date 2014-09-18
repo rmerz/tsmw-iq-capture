@@ -3,6 +3,7 @@
 import argparse, sys
 import numpy as np
 from scipy import signal
+# from scipy.stats import linregress
 from matplotlib.pylab import figure, tight_layout, show, savefig
 import decoder
 import arbmimo
@@ -39,6 +40,19 @@ def median_dB (x):
 
 def percentile_dB (x,q):
     return 10*np.log10 (np.percentile (x,q))
+
+def fit_line (y,ax=None):
+    x = np.arange (1,len (y)+1, 1)
+    p = np.polyfit (x,y,1)
+    # print (p)
+    # slope,intercept, _,_,_ = linregress (x,y)
+    # print (slope,intercept)
+    edge_values = [p[1]+p[0]*x[0],p[1]+p[0]*x[-1]] 
+    if ax is not None:
+        ax.plot ([x[0],x[-1]],edge_values,
+                 c='Orange',lw=2.0)
+    return edge_values
+
 
 def main (args):
     print (args.filepath)
@@ -190,21 +204,31 @@ def main (args):
         n = 1000
         ax = figure ().add_subplot (111)
         angle = np.angle (real_signal_ch1+1j*imag_signal_ch1,deg=True)
-        ax.plot (angle)
+        ax.plot (angle,label='Angle',c='b')
+        val = fit_line (angle,ax)
+        print ('Angle difference: {:.2f} ({:.2f},{:.2f})'.format (val[0]-val[1],val[0],val[1]))
         arctan2 = np.arctan2 (real_signal_ch1,imag_signal_ch1)*180/np.pi
-        ax.plot (arctan2,c='c')
+        ax.plot (arctan2,c='c',label='Arctan2')
+        val = fit_line (arctan2,ax)
+        print ('Arctan2 difference: {:.2f} ({:.2f},{:.2f})'.format (val[0]-val[1],val[0],val[1]))
         ax.set_title ('Channel 1: angle')
         if number_of_channels == 2:
             angle = np.angle (real_signal_ch2+1j*imag_signal_ch2,deg=True)
             angle_ma = util.moving_average (angle, n)
-            ax.plot (angle,c='r')
+            ax.plot (angle,c='r',label='Angle')
+            val = fit_line (angle,ax)
+            print ('Angle difference: {:.2f} ({:.2f},{:.2f})'.format (val[0]-val[1],val[0],val[1]))
             arctan2 = np.arctan2 (real_signal_ch2,imag_signal_ch2)*180/np.pi
-            ax.plot (arctan2,c='m')
+            ax.plot (arctan2,c='m',label='Arctan2')
+            val = fit_line (arctan2,ax)
+            print ('Arctan2 difference: {:.2f} ({:.2f},{:.2f})'.format (val[0]-val[1],val[0],val[1]))
             ax.set_title ('Channel 1 & 2: angle')
         # ax.set_ylim (-180,180)
         # ax.set_yticks (np.arange (-180,181,20))
         ax.grid (True)
+        ax.legend (loc='upper left')
         tight_layout ()
+        savefig ('angle.png',dpi=300)
     if number_of_channels == 2:
         if args.plot_spectral:
             ax = figure ().add_subplot (111)
