@@ -3,9 +3,10 @@
 import argparse, sys
 import numpy as np
 from scipy import signal
-from matplotlib import pylab as plt
+from matplotlib.pylab import figure, tight_layout, show, savefig
 import decoder
 import arbmimo
+import util
 
 def setup_args():
     parser = argparse.ArgumentParser(description='Extract data from binary file obtained with get_iq.')
@@ -14,6 +15,7 @@ def setup_args():
     parser.add_argument('--plot_timeseries', action='store_true', help='Plot time-series.')
     parser.add_argument('--plot_spectral', action='store_true', help='Plot spectral analysis.')
     parser.add_argument('--plot_iq_power', action='store_true', help='Plot IQ power.')
+    parser.add_argument('--plot_angle', action='store_true', help='Plot phase angle.')
     parser.add_argument('--calc_rsrp', action='store_true', help='Calculate the MIMO custom waveform RSRP.')
     parser.add_argument('--analysis_mode', type=str, default='spectrum', help='Frequency analysis mode. Default is \'spectrum\' (available is also \'density\'')
     parser.add_argument('-n','--number_of_blocks', type=int, help='Process that much blocks.')
@@ -160,49 +162,63 @@ def main (args):
                                               scaling=args.analysis_mode,
                                               nperseg=np.minimum(2048,len(complex_signal_ch2)))
 
-    figures = []
-    plt.ion ()
+
     if args.plot_spectral:
-        figures.append (plt.figure ())
-        plt.plot (f_ch1, 10*np.log10 (Pxx_den_ch1))
-        plt.grid (True)
-        plt.title ('Channel 1: spectral analysis')
-        plt.tight_layout ()
+        ax = figure ().add_subplot (111)
+        ax.plot (f_ch1, 10*np.log10 (Pxx_den_ch1))
+        ax.grid (True)
+        ax.set_title ('Channel 1: spectral analysis')
+        tight_layout ()
     if args.plot_timeseries:
-        figures.append (plt.figure ())
-        plt.plot (real_signal_ch1,'.-',c='b')
-        plt.plot (imag_signal_ch1,'.-',c='r')
-        plt.grid (True)
-        plt.title ('Channel 1: time-series')
-        plt.tight_layout ()
+        ax = figure ().add_subplot (111)
+        ax.plot (real_signal_ch1,'.-',c='b')
+        ax.plot (imag_signal_ch1,'.-',c='r')
+        ax.grid (True)
+        ax.set_title ('Channel 1: time-series')
+        tight_layout ()
     if args.plot_iq_power:
-        figures.append (plt.figure ())
-        plt.plot (sample_iq_power_dB (real_signal_ch1,imag_signal_ch1),'.-',c='b')
-        plt.ylim (-100,-30)
-        plt.grid (True)
-        plt.title ('Channel 1: IQ power')
-        plt.tight_layout ()
+        ax = figure ().add_subplot (111)
+        ax.plot (sample_iq_power_dB (real_signal_ch1,imag_signal_ch1),'.-',c='b')
+        ax.set_title ('Channel 1: IQ power')
+        if number_of_channels == 2:
+            ax.plot (sample_iq_power_dB (real_signal_ch2,imag_signal_ch2),'.-',c='r')
+            ax.set_title ('Channel 1&2: IQ power')
+        ax.set_ylim (-100,-10)
+        ax.grid (True)
+        tight_layout ()
+    if args.plot_angle:
+        n = 1000
+        ax = figure ().add_subplot (111)
+        angle = np.angle (real_signal_ch1+1j*imag_signal_ch1,deg=True)
+        ax.plot (angle)
+        arctan2 = np.arctan2 (real_signal_ch1,imag_signal_ch1)*180/np.pi
+        ax.plot (arctan2,c='c')
+        ax.set_title ('Channel 1: angle')
+        if number_of_channels == 2:
+            angle = np.angle (real_signal_ch2+1j*imag_signal_ch2,deg=True)
+            angle_ma = util.moving_average (angle, n)
+            ax.plot (angle,c='r')
+            arctan2 = np.arctan2 (real_signal_ch2,imag_signal_ch2)*180/np.pi
+            ax.plot (arctan2,c='m')
+            ax.set_title ('Channel 1 & 2: angle')
+        # ax.set_ylim (-180,180)
+        # ax.set_yticks (np.arange (-180,181,20))
+        ax.grid (True)
+        tight_layout ()
     if number_of_channels == 2:
         if args.plot_spectral:
-            figures.append (plt.figure ())
-            plt.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
-            plt.grid (True)
-            plt.title ('Channel 2: spectral analysis')
-            plt.tight_layout ()
+            ax = figure ().add_subplot (111)
+            ax.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
+            ax.grid (True)
+            ax.set_title ('Channel 2: spectral analysis')
+            tight_layout ()
         if args.plot_timeseries:
-            figures.append (plt.figure ())
-            plt.plot (real_signal_ch2,'.-',c='b')
-            plt.plot (imag_signal_ch2,'.-',c='r')
-            plt.grid (True)
-            plt.title ('Channel 2: time-series')
-            plt.tight_layout ()
-        if args.plot_iq_power:
-            figures.append (plt.figure ())
-            plt.plot (sample_iq_power_dB (real_signal_ch2,imag_signal_ch2),'.-',c='b')
-            plt.ylim (-100,-30)
-            plt.grid (True)
-            plt.title ('Channel 2: IQ power')
-            plt.tight_layout ()
+            ax = figure ().add_subplot (111)
+            ax.plot (real_signal_ch2,'.-',c='b')
+            ax.plot (imag_signal_ch2,'.-',c='r')
+            ax.grid (True)
+            ax.set_title ('Channel 2: time-series')
+            tight_layout ()
     if args.calc_rsrp:
         mimo = arbmimo.MimoArbWaveForm()
         if number_of_channels == 1:
@@ -225,11 +241,7 @@ def main (args):
             print ('RSRP:         {0:7.2f} dBm {1:7.2f} dBm'.format(rsrp[0],rsrp[1]))
             print ('SNR:          {0:7.2f} dB  {1:7.2f} dB '.format(snr[0],snr[1]))
             print ('Estimated frequency offset: {0:.2f} Hz'.format(foffs))
-    input ('Press any key.')
-    for fig in figures:
-        plt.close (fig)
-    return
-
+    show ()
         
     
 
