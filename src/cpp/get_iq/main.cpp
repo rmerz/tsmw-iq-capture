@@ -324,7 +324,7 @@ main (int argc, char *argv[], char *envp[])
     exit (-1);
   }
 
-  unsigned int TimeOut = 10000; // in ms
+  unsigned int TimeOut = 60000; // in ms
 
   unsigned __int64 Offset = 0;
  // Block size for processing: a too large value will cause a segfault
