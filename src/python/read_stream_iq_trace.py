@@ -3,7 +3,7 @@
 import argparse
 import numpy as np
 from scipy import signal
-from matplotlib.pylab import figure, tight_layout, show
+from matplotlib.pylab import figure, tight_layout, show, savefig
 import decoder
 
 def setup_args():
@@ -151,6 +151,7 @@ def main (args):
     plot_block_angle (ax,real_scaled,imag_scaled)
     if len (args.filepath) > 1:
         plot_block_angle (ax,real_scaled_1,imag_scaled_1,color='b')
+    savefig ('angle.png',dpi=300)
     # ax = spawn_plot ()
     # plot_block_magnitude (ax,real_scaled,imag_scaled)
     ax = spawn_plot ()
