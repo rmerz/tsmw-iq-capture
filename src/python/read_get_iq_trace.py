@@ -41,8 +41,7 @@ def median_dB (x):
 def percentile_dB (x,q):
     return 10*np.log10 (np.percentile (x,q))
 
-def fit_line (y,ax=None):
-    x = np.arange (1,len (y)+1, 1)
+def fit_line (x,y,ax=None,linestyle='-'):
     p = np.polyfit (x,y,1)
     # print (p)
     # slope,intercept, _,_,_ = linregress (x,y)
@@ -50,7 +49,7 @@ def fit_line (y,ax=None):
     edge_values = [p[1]+p[0]*x[0],p[1]+p[0]*x[-1]] 
     if ax is not None:
         ax.plot ([x[0],x[-1]],edge_values,
-                 c='Orange',lw=2.0)
+                 c='Orange',lw=2.0,linestyle=linestyle)
     return edge_values
 
 
@@ -154,6 +153,12 @@ def main (args):
             real_signal_ch2 = real_lin_ch2
             imag_signal_ch2 = imag_lin_ch2
 
+
+    # Calculate time-series for x-axis
+    print ('Sampling rate: {:f} Hz'.format (float (sample_rate)))
+    sample_index_ts = np.arange (0,len (real_signal_ch1),1)
+    time_ts = sample_index_ts / sample_rate
+
     # Display last block. And see 4.27 in
     # http://www.ni.com/pdf/manuals/370192c.pdf for why spectrum
     # versus density: PSD is PS / (1/sampling_rate * noise_bandwidth)
@@ -175,7 +180,6 @@ def main (args):
                                               fs = sample_rate,
                                               scaling=args.analysis_mode,
                                               nperseg=np.minimum(2048,len(complex_signal_ch2)))
-
 
     if args.plot_spectral:
         ax = figure ().add_subplot (111)
@@ -203,32 +207,41 @@ def main (args):
     if args.plot_angle:
         n = 1000
         ax = figure ().add_subplot (111)
-        angle = np.angle (real_signal_ch1+1j*imag_signal_ch1,deg=True)
-        ax.plot (angle,label='Angle',c='b')
-        val = fit_line (angle,ax)
+        angle_0 = np.angle (real_signal_ch1+1j*imag_signal_ch1,deg=True)
+        ax.plot (time_ts,angle_0,label='Angle',c='b')
+        val = fit_line (time_ts,angle_0,ax)
         diff_ch1 = val[0]-val[1]
         print ('Angle difference: {:.2f} ({:.2f},{:.2f})'.format (diff_ch1,val[0],val[1]))
-        print ('Median angle to angle difference: {:.6f}'.format (np.median (np.diff (angle))))
+        print ('Median angle to angle difference: {:.6f}'.format (np.median (np.diff (angle_0))))
         arctan2 = np.arctan2 (real_signal_ch1,imag_signal_ch1)*180/np.pi
-        ax.plot (arctan2,c='c',label='Arctan2')
-        val = fit_line (arctan2,ax)
+        ax.plot (time_ts,arctan2,c='c',label='Arctan2')
+        val = fit_line (time_ts,arctan2,ax)
         print ('Arctan2 difference: {:.2f} ({:.2f},{:.2f})'.format (val[0]-val[1],val[0],val[1]))
         ax.set_title ('Channel 1: angle ({:.2f})'.format (diff_ch1))
         if number_of_channels == 2:
-            angle = np.angle (real_signal_ch2+1j*imag_signal_ch2,deg=True)
-            angle_ma = util.moving_average (angle, n)
-            ax.plot (angle,c='r',label='Angle')
-            val = fit_line (angle,ax)
+            angle_1 = np.angle (real_signal_ch2+1j*imag_signal_ch2,deg=True)
+            angle_ma = util.moving_average (angle_1, n)
+            ax.plot (time_ts,angle_1,c='r',label='Angle')
+            val = fit_line (time_ts,angle_1,ax)
             diff_ch2 = val[0]-val[1]
             print ('Angle difference: {:.2f} ({:.2f},{:.2f})'.format (diff_ch2,val[0],val[1]))
-            print ('Median angle to angle difference: {:.6f}'.format (np.median (np.diff (angle))))
+            print ('Median angle to angle difference: {:.6f}'.format (np.median (np.diff (angle_1))))
             arctan2 = np.arctan2 (real_signal_ch2,imag_signal_ch2)*180/np.pi
-            ax.plot (arctan2,c='m',label='Arctan2')
-            val = fit_line (arctan2,ax)
+            ax.plot (time_ts,arctan2,c='m',label='Arctan2')
+            val = fit_line (time_ts,arctan2,ax)
             print ('Arctan2 difference: {:.2f} ({:.2f},{:.2f})'.format (val[0]-val[1],val[0],val[1]))
-            ax.set_title ('Channel 1 & 2: angle ({:.2f},{:.2f})'.format (diff_ch1,diff_ch2))
-        # ax.set_ylim (-180,180)
-        # ax.set_yticks (np.arange (-180,181,20))
+
+            # Phase difference between both signals
+            print ('Average phase difference: ', np.mean (angle_0 - angle_1))
+            val = fit_line (time_ts,angle_0 - angle_1,ax,linestyle='--')
+            diff_diff = val[0]-val[1]
+
+            ax.set_title ('Channel 1 & 2: angle ({:.2f},{:.2f},{:.2f})'.format (diff_ch1,diff_ch2,diff_diff))
+
+        ax.set_ylim (-180,180)
+        ax.set_yticks (np.arange (-180,181,20))
+        ax.set_xlabel ('Duration [s]')
+        ax.set_ylabel ('[deg]')
         ax.grid (True)
         ax.legend (loc='upper left')
         tight_layout ()
