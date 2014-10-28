@@ -64,12 +64,15 @@ def main (args):
     print (header)
     # This assumes you know what to expect
     fe1,fe2 = decoder.decode_fe_freq (f)
-    print (fe1)
-    print (fe2)
     number_of_channels_fe = decoder.decode_uint32 (f,2)
-    print (number_of_channels_fe)
     number_of_channels = np.sum (number_of_channels_fe)
     block_size = decoder.decode_uint32 (f)
+
+    print ('Frequencies:')
+    print (fe1)
+    print (fe2)
+    print ('Number of channels per FE:',number_of_channels_fe)
+    print ('Total number of channels:',number_of_channels)
 
     if args.append:
         real_lin_trace_ch1 = np.array([])
@@ -195,20 +198,6 @@ def main (args):
         ax.grid (True)
         ax.set_title ('Channel 1: time-series')
         tight_layout ()
-    if args.plot_channels:
-        assert (number_of_channels == 2)
-        f = figure ()
-        ax = f.add_subplot (211)
-        ax.plot (real_signal_ch1,'-',c='b')
-        ax.plot (real_signal_ch2,'-',c='r')
-        ax.grid (True)
-        ax.set_title ('Channel 1 and 2: real part time-series')
-        ax = f.add_subplot (212)
-        ax.plot (imag_signal_ch1,'-',c='b')
-        ax.plot (imag_signal_ch2,'-',c='r')
-        ax.grid (True)
-        ax.set_title ('Channel 1 and 2: imag part time-series')
-        tight_layout ()
     if args.plot_iq_power:
         ax = figure ().add_subplot (111)
         ax.plot (sample_iq_power_dB (real_signal_ch1,imag_signal_ch1),'.-',c='b')
@@ -262,6 +251,20 @@ def main (args):
         tight_layout ()
         savefig ('angle.png',dpi=300)
     if number_of_channels == 2:
+        if args.plot_channels:
+            assert (number_of_channels == 2)
+            f = figure ()
+            ax = f.add_subplot (211)
+            ax.plot (real_signal_ch1,'-',c='b')
+            ax.plot (real_signal_ch2,'-',c='r')
+            ax.grid (True)
+            ax.set_title ('Channel 1 and 2: real part time-series')
+            ax = f.add_subplot (212)
+            ax.plot (imag_signal_ch1,'-',c='b')
+            ax.plot (imag_signal_ch2,'-',c='r')
+            ax.grid (True)
+            ax.set_title ('Channel 1 and 2: imag part time-series')
+            tight_layout ()
         if args.plot_spectral:
             ax = figure ().add_subplot (111)
             ax.plot (f_ch2, 10*np.log10 (Pxx_den_ch2))
