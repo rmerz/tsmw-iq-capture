@@ -45,7 +45,7 @@ public:
                           f2 (0),
                           splitter (0),
                           block_length (1000000),
-			  filter_id (1),
+                          filter_id (1),
                           max_number_of_blocks (UINT_MAX)
                           
   {}
@@ -399,7 +399,7 @@ main (int argc, char *argv[], char *envp[])
                sizeof (header),
                sizeof (ChannelCtrl1.Frequency),
                sizeof (ChannelCtrl2.Frequency),
-	       sizeof (ChannelCtrl1.NoOfChannels),
+               sizeof (ChannelCtrl1.NoOfChannels),
                sizeof (ChannelCtrl2.NoOfChannels),
                sizeof (MeasCtrl.NoOfSamples),
                sizeof (IQResult.StartTimeIQ),
@@ -431,15 +431,15 @@ main (int argc, char *argv[], char *envp[])
       ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
     else
       if (options.filter_id == 5)
-	ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_5MHzParam, Filter_5MHzCoeff);
+        ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_5MHzParam, Filter_5MHzCoeff);
       else
-	if (options.filter_id == 110)
-	  ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
-	else
-	  if (options.filter_id != 0) {
-	    printf ("Invalid filter id.\n");
-	    exit (-1);
-	  }
+        if (options.filter_id == 110)
+          ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
+        else
+          if (options.filter_id != 0) {
+            printf ("Invalid filter id.\n");
+            exit (-1);
+          }
 
     if (ErrorCode == 0) {
       printf ("Filter set\n");
@@ -462,103 +462,103 @@ main (int argc, char *argv[], char *envp[])
         CntBlock = CntBlock + 1;
         // Schedule measurement
         if (options.trigger) {
-	  ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID[0], NULL, 0,
-					   &MeasCtrl, pChannelCtrl1, NULL,
-					   pTriggerParam);
-	  if (pChannelCtrl2 != NULL)
-	    ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID[1], NULL, 0,
-					     &MeasCtrl, NULL, pChannelCtrl2,
-					     pTriggerParam);
+          ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID[0], NULL, 0,
+                                           &MeasCtrl, pChannelCtrl1, NULL,
+                                           pTriggerParam);
+          if (pChannelCtrl2 != NULL)
+            ErrorCode = TSMWIQMeasureTrig_c (TSMWID, &MeasRequestID[1], NULL, 0,
+                                             &MeasCtrl, NULL, pChannelCtrl2,
+                                             pTriggerParam);
         } else {
-	  // We are not using a trigger: therefore both channels are
-	  // asked to measure (FIXME: is this synchronized?). See
-	  // Appendix B.41, page 104 of the "TSMW Interface and
-	  // programming manual": the 3rd argument is the start time,
-	  // I assume that if set to NULL, both channels are sampled
-	  // at the same time
+          // We are not using a trigger: therefore both channels are
+          // asked to measure (FIXME: is this synchronized?). See
+          // Appendix B.41, page 104 of the "TSMW Interface and
+          // programming manual": the 3rd argument is the start time,
+          // I assume that if set to NULL, both channels are sampled
+          // at the same time
 
 
-	  // The function retrieves an estimate of the current I/Q
-	  // time at the R&S TSMW. The I/Q counter starts as soon as a
-	  // connection to the R&S TSMW is established. The counter
-	  // counts the I/Q-samples in the native sampling rate of
-	  // 395/18 MS/s. It has a valid bit width of 48 bit.
-	  unsigned __int64 pIQTime = 0;
-	  ErrorCode = TSMWGetIQTime_c(TSMWID,&pIQTime);
-	  printf ("Device IQ time: %lu\n",pIQTime);	  
-	  //unsigned __int64 pStartTime [1] = {45800000};
-	  //printf ("Scheduled IQ time: %lu\n",pStartTime [0]);
+          // The function retrieves an estimate of the current I/Q
+          // time at the R&S TSMW. The I/Q counter starts as soon as a
+          // connection to the R&S TSMW is established. The counter
+          // counts the I/Q-samples in the native sampling rate of
+          // 395/18 MS/s. It has a valid bit width of 48 bit.
+          unsigned __int64 pIQTime = 0;
+          ErrorCode = TSMWGetIQTime_c(TSMWID,&pIQTime);
+          printf ("Device IQ time: %lu\n",pIQTime);       
+          //unsigned __int64 pStartTime [1] = {45800000};
+          //printf ("Scheduled IQ time: %lu\n",pStartTime [0]);
           //ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID[0], pStartTime, 1,
-	  //			       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+          //                           &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
 
           ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID[0], NULL, 0,
-				       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+                                       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
 
         }
         // Get data for MeasRequestID, wait for a data block up to
         // TimeOut seconds
         if (options.trigger) {
-	  ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID[0], TimeOut, &IQResult,
-					     pReal, pImag, pScaling,
-					     pOverFlow, pCalibrated,
-					     MeasCtrl.NoOfSamples, 1, 0, 0);
-	  printf ("Check: %lu\n",IQResult.StartTimeIQ);
-	  if (pChannelCtrl2 != NULL) {
-	    ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID[1], TimeOut, &IQResult,
-					       &pReal[MeasCtrl.NoOfSamples*ChannelCtrl1.NoOfChannels], &pImag[MeasCtrl.NoOfSamples*ChannelCtrl1.NoOfChannels], &pScaling[1],
-					       &pOverFlow[1], &pCalibrated[1],
-					       MeasCtrl.NoOfSamples, 1, 0, 0);
-	    printf ("Check: %lu\n",IQResult.StartTimeIQ);
-	  }
+          ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID[0], TimeOut, &IQResult,
+                                             pReal, pImag, pScaling,
+                                             pOverFlow, pCalibrated,
+                                             MeasCtrl.NoOfSamples, 1, 0, 0);
+          printf ("Check: %lu\n",IQResult.StartTimeIQ);
+          if (pChannelCtrl2 != NULL) {
+            ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID[1], TimeOut, &IQResult,
+                                               &pReal[MeasCtrl.NoOfSamples*ChannelCtrl1.NoOfChannels], &pImag[MeasCtrl.NoOfSamples*ChannelCtrl1.NoOfChannels], &pScaling[1],
+                                               &pOverFlow[1], &pCalibrated[1],
+                                               MeasCtrl.NoOfSamples, 1, 0, 0);
+            printf ("Check: %lu\n",IQResult.StartTimeIQ);
+          }
 
-	} else {
-	  ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID[0], TimeOut, &IQResult,
-					     pReal, pImag, pScaling,
-					     pOverFlow, pCalibrated,
-					     MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
-	  printf ("Check: %lu\n",IQResult.StartTimeIQ);
-	}
+        } else {
+          ErrorCode = TSMWIQGetDataDouble_c (TSMWID, MeasRequestID[0], TimeOut, &IQResult,
+                                             pReal, pImag, pScaling,
+                                             pOverFlow, pCalibrated,
+                                             MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
+          printf ("Check: %lu\n",IQResult.StartTimeIQ);
+        }
 
 
         if (ErrorCode == 0) {
           // printf ("Block %d received: %u\n",CntBlock,IQResult.NoOfSamples);
           // printf ("Block %d received\n",CntBlock);
 
-	  if (options.zmq) {
-	    msg_offset = msg_pack_offset;
-	    // printf ("%d\n",msg_offset);
+          if (options.zmq) {
+            msg_offset = msg_pack_offset;
+            // printf ("%d\n",msg_offset);
 
-	    memcpy (&msg_pack[msg_offset], &IQResult.Fsample, sizeof (IQResult.Fsample));
-	    msg_offset += sizeof (IQResult.Fsample);
+            memcpy (&msg_pack[msg_offset], &IQResult.Fsample, sizeof (IQResult.Fsample));
+            msg_offset += sizeof (IQResult.Fsample);
 
-	    // printf ("%d\n",msg_offset);
-	    memcpy (&msg_pack[msg_offset],
-		    &IQResult.StartTimeIQ, sizeof (IQResult.StartTimeIQ));
-	    msg_offset += sizeof (IQResult.StartTimeIQ);
+            // printf ("%d\n",msg_offset);
+            memcpy (&msg_pack[msg_offset],
+                    &IQResult.StartTimeIQ, sizeof (IQResult.StartTimeIQ));
+            msg_offset += sizeof (IQResult.StartTimeIQ);
 
-	    // printf ("%d %d %d\n",msg_offset,sizeof (*pScaling),sizeof (*pScaling)*NoOfChannels);
-	    memcpy (&msg_pack[msg_offset],
-		    pScaling, sizeof (*pScaling)*NoOfChannels);
-	    msg_offset += sizeof (*pScaling)*NoOfChannels;
+            // printf ("%d %d %d\n",msg_offset,sizeof (*pScaling),sizeof (*pScaling)*NoOfChannels);
+            memcpy (&msg_pack[msg_offset],
+                    pScaling, sizeof (*pScaling)*NoOfChannels);
+            msg_offset += sizeof (*pScaling)*NoOfChannels;
 
-	    // printf ("%d\n",msg_offset);
-	    memcpy (&msg_pack[msg_offset],
-		    pOverFlow, sizeof (*pOverFlow)*NoOfChannels);
-	    msg_offset += sizeof (*pOverFlow)*NoOfChannels;
+            // printf ("%d\n",msg_offset);
+            memcpy (&msg_pack[msg_offset],
+                    pOverFlow, sizeof (*pOverFlow)*NoOfChannels);
+            msg_offset += sizeof (*pOverFlow)*NoOfChannels;
 
-	    // printf ("%d\n",msg_offset);
-	    memcpy (&msg_pack[msg_offset],
-		    pReal, sizeof (*pReal)*NoOfChannels*MeasCtrl.NoOfSamples);
-	    msg_offset += sizeof (*pReal)*NoOfChannels*MeasCtrl.NoOfSamples;
+            // printf ("%d\n",msg_offset);
+            memcpy (&msg_pack[msg_offset],
+                    pReal, sizeof (*pReal)*NoOfChannels*MeasCtrl.NoOfSamples);
+            msg_offset += sizeof (*pReal)*NoOfChannels*MeasCtrl.NoOfSamples;
 
-	    // printf ("%d\n",msg_offset);
-	    memcpy (&msg_pack[msg_offset],
-		    pImag, sizeof (*pImag)*NoOfChannels*MeasCtrl.NoOfSamples);
-	    msg_offset += sizeof (*pImag)*NoOfChannels*MeasCtrl.NoOfSamples;
+            // printf ("%d\n",msg_offset);
+            memcpy (&msg_pack[msg_offset],
+                    pImag, sizeof (*pImag)*NoOfChannels*MeasCtrl.NoOfSamples);
+            msg_offset += sizeof (*pImag)*NoOfChannels*MeasCtrl.NoOfSamples;
 
-	    zmq_rc = zmq_send (publisher, msg_pack, msg_pack_len, ZMQ_DONTWAIT);
-	    assert (zmq_rc);
-	  }
+            zmq_rc = zmq_send (publisher, msg_pack, msg_pack_len, ZMQ_DONTWAIT);
+            assert (zmq_rc);
+          }
 
           if (options.verbose) {
             printf ("Block %d received\n",CntBlock);
@@ -583,10 +583,10 @@ main (int argc, char *argv[], char *envp[])
 
               // Average power over all samples
               util.get_average_iq_power_and_angle (result,
-						   pScaling[CntChannel],
-						   &pReal[channel_offset],
-						   &pImag[channel_offset],
-						   MeasCtrl.NoOfSamples);
+                                                   pScaling[CntChannel],
+                                                   &pReal[channel_offset],
+                                                   &pImag[channel_offset],
+                                                   MeasCtrl.NoOfSamples);
               // iq_average_power = util.get_average_iq_power (pScaling[CntChannel],
               //                                               &pReal[channel_offset],
               //                                               &pImag[channel_offset],
