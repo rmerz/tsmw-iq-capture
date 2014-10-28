@@ -470,6 +470,12 @@ main (int argc, char *argv[], char *envp[])
 					     &MeasCtrl, NULL, pChannelCtrl2,
 					     pTriggerParam);
         } else {
+	  // We are not using a trigger: therefore both channels are
+	  // asked to measure (FIXME: is this synchronized?). See
+	  // Appendix B.41, page 104 of the "TSMW Interface and
+	  // programming manual": the 3rd argument is the start time,
+	  // I assume that if set to NULL, both channels are sampled
+	  // at the same time
           ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID[0], NULL, 0,
                                        &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
         }
