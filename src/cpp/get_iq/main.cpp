@@ -476,8 +476,24 @@ main (int argc, char *argv[], char *envp[])
 	  // programming manual": the 3rd argument is the start time,
 	  // I assume that if set to NULL, both channels are sampled
 	  // at the same time
+
+
+	  // The function retrieves an estimate of the current I/Q
+	  // time at the R&S TSMW. The I/Q counter starts as soon as a
+	  // connection to the R&S TSMW is established. The counter
+	  // counts the I/Q-samples in the native sampling rate of
+	  // 395/18 MS/s. It has a valid bit width of 48 bit.
+	  unsigned __int64 pIQTime = 0;
+	  ErrorCode = TSMWGetIQTime_c(TSMWID,&pIQTime);
+	  printf ("Device IQ time: %lu\n",pIQTime);	  
+	  //unsigned __int64 pStartTime [1] = {45800000};
+	  //printf ("Scheduled IQ time: %lu\n",pStartTime [0]);
+          //ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID[0], pStartTime, 1,
+	  //			       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+
           ErrorCode = TSMWIQMeasure_c (TSMWID, &MeasRequestID[0], NULL, 0,
-                                       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+				       &MeasCtrl, pChannelCtrl1, pChannelCtrl2);
+
         }
         // Get data for MeasRequestID, wait for a data block up to
         // TimeOut seconds
@@ -500,6 +516,7 @@ main (int argc, char *argv[], char *envp[])
 					     pReal, pImag, pScaling,
 					     pOverFlow, pCalibrated,
 					     MeasCtrl.NoOfSamples, NoOfChannels, 0, 0);
+	  printf ("Check: %lu\n",IQResult.StartTimeIQ);
 	}
 
 
