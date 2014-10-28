@@ -196,6 +196,7 @@ def main (args):
         ax.set_title ('Channel 1: time-series')
         tight_layout ()
     if args.plot_channels:
+        assert (number_of_channels == 2)
         f = figure ()
         ax = f.add_subplot (211)
         ax.plot (real_signal_ch1,'-',c='b')
