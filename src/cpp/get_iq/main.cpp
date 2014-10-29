@@ -39,6 +39,7 @@ public:
                           pFilename (NULL),
                           pDescription (NULL),
                           verbose (false),
+                          activate_gps (false),
                           trigger (false),
                           zmq (false),
                           f1 (1000000000),
@@ -56,6 +57,7 @@ public:
   char* pFilename;
   char* pDescription;
   bool verbose;
+  bool activate_gps;
   bool trigger;
   bool zmq;
 
@@ -88,6 +90,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string help ("--help");
   std::string short_help ("-h");
   std::string verbose_opt ("-v");
+  std::string gps_opt ("--gps");
   std::string block_opt ("-n");
   std::string trigger_opt ("-t");
   std::string filter_opt ("--filter_id");
@@ -101,6 +104,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
     if (help.compare (argv[count]) == 0 || short_help.compare (argv[count]) == 0) {
       std::cout << "-f\t\tWrite IQ measurement blocks to file\n"
                 << "-v\t\tVerbose mode: print IQ samples summary\n"
+                << "--gps\tActivate GPS synchronization\n"
                 << "--filename [string]\tSpecify file name to write IQ samples (default is iq_data.dat)\n"
                 << "--description [string]\tSpecify description to attach with IQ samples capture (default is n/a)\n"
                 << "--fe1_freq [double]\tFrequency of frontend 1 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 1 (default is 1e9)\n"
@@ -143,6 +147,10 @@ CaptureOptions::parseCmd (int argc, char *argv[])
     }
     if (verbose_opt.compare (argv[count]) == 0) {
       verbose = true;
+      valid = true;
+    }
+    if (gps_opt.compare (argv[count]) == 0) {
+      activate_gps = true;
       valid = true;
     }
     if (zmq_opt.compare (argv[count]) == 0) {
@@ -425,6 +433,13 @@ main (int argc, char *argv[], char *envp[])
     printf ("Connected\n");
 
     util.waitForFrontendSync ();
+
+    if (!options.activate_gps) {
+      // Disable GPS sync
+      ErrorCode = TSMWGPSSync_c (TSMWID,0);
+      if (ErrorCode == 0)
+        printf ("GPS sync disabled\n");
+    }
 
     // Send user-specific resampling filter to TSMW
     if (options.filter_id == 1)
