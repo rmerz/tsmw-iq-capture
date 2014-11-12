@@ -167,11 +167,15 @@ def main (args):
     # Calculate phase offset
     if number_of_channels == 2 and args.calc_sine_phase_offset:
         # In the time domain
+        # Find the first minimum
+        idx_min1 = np.argmin (real_signal_ch1)
+        idx_min2 = np.argmin (real_signal_ch2)
+        print ('Index of first minimum: {:d} {:d}'.format (idx_min1,idx_min2))
         epsilon = 1e-3
         idx1 = np.where (np.abs (real_signal_ch1) <= epsilon)
         idx2 = np.where (np.abs (real_signal_ch2) <= epsilon)
         print ('First zero-crossings: {:d} {:d}'.format (idx1[0][0],idx2[0][0]))
-        zero_crossing_diff = idx1[0][0]-idx2[0][0]
+        zero_crossing_diff = idx1[0][1]-idx2[0][1]
         print ('Sample difference for fist zero-crossing (1-2): {:d}'.format (zero_crossing_diff))
         if zero_crossing_diff < 0:
             print ('Delay frontend 2')
@@ -179,16 +183,16 @@ def main (args):
             print ('Delay frontend 1')
         # In the frequency domain
         # We use only the real-part
-        F_ch1 = np.fft.fft (real_signal_ch1)
-        F_ch2 = np.fft.fft (real_signal_ch2)
+        F_ch1 = np.fft.fftshift (np.fft.fft (real_signal_ch1))
+        F_ch2 = np.fft.fftshift (np.fft.fft (real_signal_ch2))
         # Find the max (again, this assumes a sine-wave input on both channels)
         idx1 = np.argmax (np.abs (F_ch1))
         idx2 = np.argmax (np.abs (F_ch2))
         # See http://docs.scipy.org/doc/numpy/reference/routines.fft.html
         if idx1 != idx2: # That means the two sine are not having the same frequency
-            print ('Achtung: max. of FFT are not the same: {:d} {:d}'.format (idx1,idx2))
+            print ('ACHTUNG: max. of FFT are not the same: {:d} {:d}'.format (idx1,idx2))
         phase_shift_rad = np.angle (F_ch1[idx1]) - np.angle (F_ch2[idx2])
-        if np.abs (phase_shift_rad) < np.pi:
+        if np.abs (phase_shift_rad) <= 2*np.pi:
             print ('Phase difference: {:.2f} radians'.format (phase_shift_rad))
             if args.calib_sine_freq is not None:
                 time_delta = phase_shift_rad / (2*np.pi*args.calib_sine_freq)
