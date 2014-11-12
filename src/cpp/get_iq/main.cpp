@@ -44,6 +44,8 @@ public:
                           zmq (false),
                           f1 (1000000000),
                           f2 (0),
+                          delay1 (0),
+                          delay2 (0),
                           splitter (0),
                           block_length (1000000),
                           filter_id (1),
@@ -63,6 +65,8 @@ public:
 
   (unsigned __int64) f1;
   (unsigned __int64) f2;
+  (unsigned int) delay1;
+  (unsigned int) delay2;
   unsigned int splitter;
   unsigned int filter_id;
 
@@ -86,6 +90,8 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string fe_splitter ("--splitter");
   std::string fe1_freq ("--fe1_freq");
   std::string fe2_freq ("--fe2_freq");
+  std::string delay1_opt ("--delay1");
+  std::string delay2_opt ("--delay2");
   std::string block_length_opt ("--block_length");
   std::string help ("--help");
   std::string short_help ("-h");
@@ -109,6 +115,8 @@ CaptureOptions::parseCmd (int argc, char *argv[])
                 << "--description [string]\tSpecify description to attach with IQ samples capture (default is n/a)\n"
                 << "--fe1_freq [double]\tFrequency of frontend 1 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 1 (default is 1e9)\n"
                 << "--fe2_freq [double]\tFrequency of frontend 2 in Hz.\n\t\t\tIf frequency is 0, deactivates frontend 2 (default is 0 e.g inactive)\n"
+                << "--delay1 [UINT]\tDelay in taps for frontend 1 (default 0)\n"
+                << "--delay2 [UINT]\tDelay in taps for frontend 2 (default 0)\n"
                 << "--splitter [1|0]\tActivate splitter from FE1 to FE2 (default is inactive)\n"
                 << "--block_length [INT]\tSize in bits of the measurement blocks (default is 1e6)\n"
                 << "--filter_id [INT]\tFilter identifier (default is 1, available 0, 5, 110)\n"
@@ -175,6 +183,18 @@ CaptureOptions::parseCmd (int argc, char *argv[])
       assert (argc >= count+1);
       count++;
       f2 = (unsigned __int64)atof (argv[count]);
+      valid = true;
+    }
+    if (delay1_opt.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      delay1 = (unsigned int)atoi (argv[count]);
+      valid = true;
+    }
+    if (delay2_opt.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      delay2 = (unsigned int)atoi (argv[count]);
       valid = true;
     }
     if (block_length_opt.compare (argv[count]) == 0) {
@@ -285,7 +305,7 @@ main (int argc, char *argv[], char *envp[])
   ChannelCtrl1.FreqShift[1] = 0;
   ChannelCtrl1.FreqShift[2] = 0;
   ChannelCtrl1.FreqShift[3] = 0;
-  ChannelCtrl1.ChannelDelay[0] = 0; // Individual delay in taps for
+  ChannelCtrl1.ChannelDelay[0] = options.delay1; // Individual delay in taps for
                                     // each subchannel (after
                                     // filtering/resampling)
   ChannelCtrl1.ChannelDelay[1] = 0;
@@ -310,7 +330,7 @@ main (int argc, char *argv[], char *envp[])
   ChannelCtrl2.FreqShift[1] = 0;
   ChannelCtrl2.FreqShift[2] = 0;
   ChannelCtrl2.FreqShift[3] = 0;
-  ChannelCtrl2.ChannelDelay[0] = 0;
+  ChannelCtrl2.ChannelDelay[0] = options.delay2;
   ChannelCtrl2.ChannelDelay[1] = 0;
   ChannelCtrl2.ChannelDelay[2] = 0;
   ChannelCtrl2.ChannelDelay[3] = 0;
