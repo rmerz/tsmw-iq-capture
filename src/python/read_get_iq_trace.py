@@ -15,6 +15,8 @@ def setup_args():
     parser.add_argument('-a','--append', action='store_true', help='Append all measurement blocks.')
     parser.add_argument('--plot_timeseries', action='store_true', help='Plot time-series (each channel in a separate window).')
     parser.add_argument('--plot_channels', action='store_true', help='Plot channels together (real and imag in a separate window each).')
+    parser.add_argument('--calc_sine_phase_offset', action='store_true', help='Calculate phase offset between both signals (assumes sine input).')
+    parser.add_argument('--calib_sine_freq', type=float, help='Frequency of the sine wave used for calibration (optional, in Hz).')
     parser.add_argument('--plot_spectral', action='store_true', help='Plot spectral analysis.')
     parser.add_argument('--plot_iq_power', action='store_true', help='Plot IQ power.')
     parser.add_argument('--plot_angle', action='store_true', help='Plot phase angle.')
@@ -93,7 +95,7 @@ def main (args):
             break
         print ('Block {}'.format(block_counter))
         #print (start_time_iq)  # StartTimeIQ
-        sample_rate = decoder.decode_float64 (f)
+        sample_rate = decoder.decode_float64 (f)[0]
         #print ('Sampling rate:', sample_rate)  # Fsample
         scaling = decoder.decode_int16 (f,n=number_of_channels)  # Scaling
         scaling_lin = np.power (10,scaling/2000)
@@ -142,7 +144,7 @@ def main (args):
             print ('Channel 2 trace IQ power stat: {} {} {}'.format (percentile_dB (trace_ch2_iq_power,5),
                                                                      median_dB (trace_ch2_iq_power),
                                                                      percentile_dB (trace_ch2_iq_power,95)))
-
+    # Prepare output of parser for analysis
     if args.append:
         real_signal_ch1 = real_lin_trace_ch1
         imag_signal_ch1 = imag_lin_trace_ch1
@@ -157,11 +159,45 @@ def main (args):
             real_signal_ch2 = real_lin_ch2
             imag_signal_ch2 = imag_lin_ch2
 
-
     # Calculate time-series for x-axis
-    print ('Sampling rate: {:f} Hz'.format (float (sample_rate)))
+    print ('Sampling rate: {:f} Hz'.format (sample_rate))
     sample_index_ts = np.arange (0,len (real_signal_ch1),1)
     time_ts = sample_index_ts / sample_rate
+
+    # Calculate phase offset
+    if number_of_channels == 2 and args.calc_sine_phase_offset:
+        # In the time domain
+        epsilon = 1e-3
+        idx1 = np.where (np.abs (real_signal_ch1) <= epsilon)
+        idx2 = np.where (np.abs (real_signal_ch2) <= epsilon)
+        print ('First zero-crossings: {:d} {:d}'.format (idx1[0][0],idx2[0][0]))
+        zero_crossing_diff = idx1[0][0]-idx2[0][0]
+        print ('Sample difference for fist zero-crossing (1-2): {:d}'.format (zero_crossing_diff))
+        if zero_crossing_diff < 0:
+            print ('Delay frontend 2')
+        else:
+            print ('Delay frontend 1')
+        # In the frequency domain
+        # We use only the real-part
+        F_ch1 = np.fft.fft (real_signal_ch1)
+        F_ch2 = np.fft.fft (real_signal_ch2)
+        # Find the max (again, this assumes a sine-wave input on both channels)
+        idx1 = np.argmax (np.abs (F_ch1))
+        idx2 = np.argmax (np.abs (F_ch2))
+        # See http://docs.scipy.org/doc/numpy/reference/routines.fft.html
+        if idx1 != idx2: # That means the two sine are not having the same frequency
+            print ('Achtung: max. of FFT are not the same: {:d} {:d}'.format (idx1,idx2))
+        phase_shift_rad = np.angle (F_ch1[idx1]) - np.angle (F_ch2[idx2])
+        if np.abs (phase_shift_rad) < np.pi:
+            print ('Phase difference: {:.2f} radians'.format (phase_shift_rad))
+            if args.calib_sine_freq is not None:
+                time_delta = phase_shift_rad / (2*np.pi*args.calib_sine_freq)
+                print ('Time difference: {:.6f} seconds'.format (time_delta))
+                print ('Number of samples: {:f}'.format (time_delta*sample_rate))
+        else:
+            print ('Phase difference larger than PI. Skip.')
+        
+
 
     # Display last block. And see 4.27 in
     # http://www.ni.com/pdf/manuals/370192c.pdf for why spectrum
