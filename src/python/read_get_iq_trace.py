@@ -23,6 +23,7 @@ def setup_args():
     parser.add_argument('--calc_rsrp', action='store_true', help='Calculate the MIMO custom waveform RSRP.')
     parser.add_argument('--analysis_mode', type=str, default='spectrum', help='Frequency analysis mode. Default is \'spectrum\' (available is also \'density\'')
     parser.add_argument('-n','--number_of_blocks', type=int, help='Process that much blocks.')
+    parser.add_argument('--to-file', type=str, nargs='+', help='Export data to binary file for Gnuradio.')
     args   = parser.parse_args()
     return args
 
@@ -158,6 +159,16 @@ def main (args):
         else:
             real_signal_ch2 = real_lin_ch2
             imag_signal_ch2 = imag_lin_ch2
+
+    # Export for gnuradio
+    if args.to_file is not None:
+        print ('Gnuradio export. Use complex64.')
+        print (real_signal_ch1.shape,imag_signal_ch1.shape)
+        (real_signal_ch1+1j*imag_signal_ch1).astype ('complex64').tofile (args.to_file[0])
+        if number_of_channels == 2:
+            print (real_signal_ch2.shape,imag_signal_ch2.shape)
+            (real_signal_ch2+1j*imag_signal_ch2).astype ('complex64').tofile (args.to_file[1])
+
 
     # Calculate time-series for x-axis
     print ('Sampling rate: {:f} Hz'.format (sample_rate))
