@@ -30,6 +30,7 @@
 #include "../include/Filter_1MHz.h"
 #include "../include/Filter_110kHz.h"
 #include "../include/Filter_500kHz.h"
+#include "../include/Filter_500kHz_b.h"
 
 class CaptureOptions
 {
@@ -475,10 +476,13 @@ main (int argc, char *argv[], char *envp[])
 	  if (options.filter_id == 500)
 	    ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_500kHzParam, Filter_500kHzCoeff);
 	  else
-	    if (options.filter_id != 0) {
-	      printf ("Invalid filter id.\n");
-	      exit (-1);
-	    }
+	    if (options.filter_id == 501)
+	      ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_500kHzParam, Filter_500kHz_bCoeff);
+	    else
+	      if (options.filter_id != 0) {
+		printf ("Invalid filter id.\n");
+		exit (-1);
+	      }
 
     if (ErrorCode == 0) {
       printf ("Filter set\n");
