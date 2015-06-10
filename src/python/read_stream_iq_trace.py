@@ -17,6 +17,7 @@ def setup_args():
     parser.add_argument('--plot_spectral', action='store_true', help='Plot spectral analysis.')
     parser.add_argument('--plot_iq_power', action='store_true', help='Plot IQ power.')
     parser.add_argument('--plot_angle', action='store_true', help='Plot phase angle.')
+    parser.add_argument('-g','--gain-dB', type=float, help='Increase received signal by gain value (in dB).')
     args   = parser.parse_args()
     return args
 
@@ -118,11 +119,10 @@ def decode_stream_trace (f,number_of_blocks=None,aggregate=False):
         print (scaling)
         real = decoder.decode_float64 (f,n=block_size) # Real
         imag = decoder.decode_float64 (f,n=block_size) # Real
-        print (real[0])
-        print (imag[0])
+        print ('RE/IM:',real[0],imag[0])
 
         scaling_lin = np.power (10,scaling/2000)
-        print (10*np.log10(np.mean (np.power (real*scaling_lin,2.0) + np.power (imag*scaling_lin,2.0))))
+        print ('Avg. RX power:',10*np.log10(np.mean (np.power (real*scaling_lin,2.0) + np.power (imag*scaling_lin,2.0))))
 
         real_scaled = real*scaling_lin
         imag_scaled = imag*scaling_lin
@@ -145,6 +145,14 @@ def main (args):
     if len (args.filepath) > 1:
         f = open_stream_trace (args.filepath[1],args.header_length)
         real_scaled_1,imag_scaled_1,sample_rate_1 = decode_stream_trace (f,args.number_of_blocks,args.aggregate)
+
+    if args.gain_dB is not None:
+        gain_lin = np.power (10,args.gain_dB/10)
+        real_scaled_0 = real_scaled_0*gain_lin
+        imag_scaled_0 = imag_scaled_0*gain_lin
+        if len (args.filepath) > 1:
+            real_scaled_1 = real_scaled_1*gain_lin
+            imag_scaled_1 = imag_scaled_1*gain_lin
 
     # Export for gnuradio
     if args.to_file is not None:
