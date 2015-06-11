@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import numpy as np
@@ -12,6 +12,12 @@ def setup_args():
     parser.add_argument('-a','--aggregate', action='store_true', help='Aggregate all blocks together.')
     parser.add_argument('-n','--number_of_blocks', type=int, help='Number of blocks to parse (default is all).')
     parser.add_argument('--header_length', type=int, default=512, help='Length of the text header (default is 512)')
+    parser.add_argument('--to-file', type=str, nargs='+', help='Export data to binary file for Gnuradio.')
+    parser.add_argument('--plot_timeseries', action='store_true', help='Plot time-series (each channel in a separate window).')
+    parser.add_argument('--plot_spectral', action='store_true', help='Plot spectral analysis.')
+    parser.add_argument('--plot_iq_power', action='store_true', help='Plot IQ power.')
+    parser.add_argument('--plot_angle', action='store_true', help='Plot phase angle.')
+    parser.add_argument('-g','--gain-dB', type=float, help='Increase received signal by gain value (in dB).')
     args   = parser.parse_args()
     return args
 
@@ -113,11 +119,10 @@ def decode_stream_trace (f,number_of_blocks=None,aggregate=False):
         print (scaling)
         real = decoder.decode_float64 (f,n=block_size) # Real
         imag = decoder.decode_float64 (f,n=block_size) # Real
-        print (real[0])
-        print (imag[0])
+        print ('RE/IM:',real[0],imag[0])
 
         scaling_lin = np.power (10,scaling/2000)
-        print (10*np.log10(np.mean (np.power (real*scaling_lin,2.0) + np.power (imag*scaling_lin,2.0))))
+        print ('Avg. RX power:',10*np.log10(np.mean (np.power (real*scaling_lin,2.0) + np.power (imag*scaling_lin,2.0))))
 
         real_scaled = real*scaling_lin
         imag_scaled = imag*scaling_lin
@@ -135,37 +140,62 @@ def main (args):
     print (args.filepath)
 
     f = open_stream_trace (args.filepath[0],args.header_length)
-    real_scaled,imag_scaled,sample_rate = decode_stream_trace (f,args.number_of_blocks,args.aggregate)
+    real_scaled_0,imag_scaled_0,sample_rate = decode_stream_trace (f,args.number_of_blocks,args.aggregate)
 
     if len (args.filepath) > 1:
         f = open_stream_trace (args.filepath[1],args.header_length)
         real_scaled_1,imag_scaled_1,sample_rate_1 = decode_stream_trace (f,args.number_of_blocks,args.aggregate)
-        
+
+    if args.gain_dB is not None:
+        gain_lin = np.power (10,args.gain_dB/10)
+        real_scaled_0 = real_scaled_0*gain_lin
+        imag_scaled_0 = imag_scaled_0*gain_lin
+        if len (args.filepath) > 1:
+            real_scaled_1 = real_scaled_1*gain_lin
+            imag_scaled_1 = imag_scaled_1*gain_lin
+
+    # Export for gnuradio
+    if args.to_file is not None:
+        print ('Gnuradio export. Use complex64.')
+        print (real_scaled_0.shape,imag_scaled_0.shape)
+        (real_scaled_0+1j*imag_scaled_0).astype ('complex64').tofile (args.to_file[0])
+        if len (args.filepath) > 1:
+            print (real_scaled_1.shape,imag_scaled_1.shape)
+            (real_scaled_1+1j*imag_scaled_1).astype ('complex64').tofile (args.to_file[1])
 
     # Plot the last block
-    ax = spawn_plot ()
-    plot_block_complex (ax,real_scaled,imag_scaled)
-    if len (args.filepath) > 1:
-        plot_block_complex (ax,real_scaled_1,imag_scaled_1,linestyle='--')
-    ax = spawn_plot ()
-    plot_block_angle (ax,real_scaled,imag_scaled)
-    if len (args.filepath) > 1:
-        plot_block_angle (ax,real_scaled_1,imag_scaled_1,color='b')
-    savefig ('angle.png',dpi=300)
-    # ax = spawn_plot ()
-    # plot_block_magnitude (ax,real_scaled,imag_scaled)
-    ax = spawn_plot ()
-    plot_block_iq_power (ax,real_scaled,imag_scaled)
-    if len (args.filepath) > 1:
-        plot_block_iq_power (ax,real_scaled_1,imag_scaled_1,color='b')
-    ax = spawn_plot ()
-    plot_block_spectrum (ax,real_scaled,imag_scaled,sample_rate)
-    if len (args.filepath) > 1:
-        plot_block_spectrum (ax,real_scaled_1,imag_scaled_1,sample_rate_1,color='b')
-
-    if len (args.filepath) > 1:
+    if args.plot_timeseries:
         ax = spawn_plot ()
-        plot_block_iq_power (ax,real_scaled+real_scaled_1,imag_scaled+imag_scaled_1,color='Violet')
+        plot_block_complex (ax,real_scaled_0,imag_scaled_0)
+        if len (args.filepath) > 1:
+            plot_block_complex (ax,real_scaled_1,imag_scaled_1,linestyle='--')
+
+    if args.plot_angle:
+        ax = spawn_plot ()
+        plot_block_angle (ax,real_scaled_0,imag_scaled_0)
+        if len (args.filepath) > 1:
+            plot_block_angle (ax,real_scaled_1,imag_scaled_1,color='b')
+        savefig ('angle.png',dpi=300)
+
+    if args.plot_iq_power:
+        # ax = spawn_plot ()
+        # plot_block_magnitude (ax,real_scaled_0,imag_scaled_0)
+        ax = spawn_plot ()
+        plot_block_iq_power (ax,real_scaled_0,imag_scaled_0)
+        if len (args.filepath) > 1:
+            plot_block_iq_power (ax,real_scaled_1,imag_scaled_1,color='b')
+
+    if args.plot_spectral:
+        ax = spawn_plot ()
+        plot_block_spectrum (ax,real_scaled_0,imag_scaled_0,sample_rate)
+        if len (args.filepath) > 1:
+            plot_block_spectrum (ax,real_scaled_1,imag_scaled_1,sample_rate_1,color='b')
+
+    if args.plot_iq_power:
+        if len (args.filepath) > 1:
+            ax = spawn_plot ()
+            plot_block_iq_power (ax,real_scaled_0+real_scaled_1,imag_scaled_0+imag_scaled_1,color='Violet')
+
     show ()
 
 if __name__ == '__main__':
