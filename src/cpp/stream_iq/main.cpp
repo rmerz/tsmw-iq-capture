@@ -49,6 +49,7 @@ public:
   (unsigned __int64) f1;
   (unsigned __int64) f2;
   unsigned int splitter;
+  bool trigger;
   unsigned int filter_id;
 
   (unsigned int) block_length;
@@ -72,6 +73,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string fe2_freq ("--fe2_freq");
   std::string block_length_opt ("--block_length");
   std::string filter_opt ("--filter_id");
+  std::string trigger_opt ("--trigger");
   std::string help ("--help");
   std::string short_help ("-h");
 
@@ -88,6 +90,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
                 << "--splitter\tActivate splitter from FE1 to FE2 (default is inactive)\n"
                 << "--block_length\tSize in bits of the measurement blocks (default is 1e6)\n"
                 << "--filter_id [INT]\tFilter identifier (default is 1, available 0, 5, 110)\n"
+		<< "--trigger Waits on the serial-line box to start (and stop) the measurement"
                 << "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
     }
@@ -114,6 +117,10 @@ CaptureOptions::parseCmd (int argc, char *argv[])
     }
     if (fe_splitter.compare (argv[count]) == 0) {
       splitter = 1;
+      valid = true;
+    }
+    if (trigger_opt.compare (argv[count]) == 0) {
+      trigger = 1;
       valid = true;
     }
     if (fe1_freq.compare (argv[count]) == 0) {
@@ -147,15 +154,43 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   }
 }
 
-UINT MyThreadProc (LPVOID pParam)
+UINT triggerStatus (LPVOID pParam)
 {
 
   bool* run = (bool*)pParam;
+  printf ("Running state: %d\n",*run);
 
-  printf ("Thread function: %d\n",*run);
-  // do something with 'pObject'
-  *run = true;
-  return 0;   // thread completed successfully
+  int j=0;
+
+  CSerial serial;
+
+  if (serial.Open (20,19200)) { // COM port hardcoded
+    printf("Port opened successfully\n");
+    while (TRUE){
+      char* ding = new char[500];
+      int nBytesRead = serial.ReadData(ding, 500);
+      char* start_="{";
+      char* stop_="}";
+
+      if (strcmp (ding,start_)==0 || strcmp (ding,stop_)==0) {
+	printf ("%d - Mirror detected!\n\n",j);
+	if (*run == false)
+	  *run = true;
+	else
+	  *run = false;
+	//wait for passing the mirror
+	do{
+	  int nBytesRead = serial.ReadData(ding, 500);
+	} while (strcmp(ding,start_)==0 || strcmp(ding,stop_)==0);
+	j++;
+      }
+      delete []ding;
+    }
+  }
+  else
+    printf ("Failed to open port!\n");
+
+  return -1;   // thread completed successfully
 }
 
 int
@@ -164,8 +199,8 @@ main (int argc, char *argv[], char *envp[])
   int ErrorCode;
   CaptureOptions options;
   Util util;
-  bool run = false;
-  AfxBeginThread(MyThreadProc,&run);
+  bool run = false;  // Initial state: not running
+  AfxBeginThread(triggerStatus,&run);
   options.parseCmd (argc,argv);
 
   char IPAddress[] = "192.168.0.2";
