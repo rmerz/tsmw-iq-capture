@@ -35,7 +35,7 @@ public:
                           f1 (1000000000),
                           f2 (0),
                           splitter (0),
-			  trigger (false),
+                          trigger (false),
                           block_length (1000000),
 			  filter_id (1)
                           
@@ -174,16 +174,16 @@ UINT triggerStatus (LPVOID pParam)
       char* stop_="}";
 
       if (strcmp (ding,start_)==0 || strcmp (ding,stop_)==0) {
-	printf ("%d - Mirror detected!\n\n",j);
-	if (*run == false)
-	  *run = true;
-	else
-	  *run = false;
-	//wait for passing the mirror
-	do{
-	  int nBytesRead = serial.ReadData(ding, 500);
-	} while (strcmp(ding,start_)==0 || strcmp(ding,stop_)==0);
-	j++;
+        printf ("%d - Mirror detected!\n\n",j);
+        if (*run == false)
+          *run = true;
+        else
+          *run = false;
+        //wait for passing the mirror
+        do{
+          int nBytesRead = serial.ReadData(ding, 500);
+        } while (strcmp(ding,start_)==0 || strcmp(ding,stop_)==0);
+        j++;
       }
       delete []ding;
     }
@@ -200,15 +200,13 @@ main (int argc, char *argv[], char *envp[])
   int ErrorCode;
   CaptureOptions options;
   Util util;
-  bool run = false;  // Initial state: not running
-
-  CSerial serial;
-
-
-  AfxBeginThread (triggerStatus,&run);
 
   options.parseCmd (argc,argv);
 
+  bool run = false;  // Initial state: not running
+  if (options.trigger == true)
+    AfxBeginThread (triggerStatus,&run);
+  
   char IPAddress[] = "192.168.0.2";
   TSMW_IQIF_MODE_t TSMWMode;
   TSMWMode.Frontends = 3;               // enable both frontends
@@ -216,9 +214,6 @@ main (int argc, char *argv[], char *envp[])
   TSMWMode.AMPS_CH2 = (1ULL << 32) - 1; // all preselector bands
   TSMWMode.Mode = 0;                    // standard mode  (has to be zero)
   unsigned short TSMWID;
-
-  Sleep (1000);
-  printf ("Thread function changed: %d\n",run);
 
   std::cout << "Preselectors: " << TSMWMode.AMPS_CH1 << " " << TSMWMode.AMPS_CH2 << "\n";
 
