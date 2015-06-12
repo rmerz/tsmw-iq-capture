@@ -12,8 +12,9 @@
  *    May 2014
  *
  */
-
+#include <Afxwin.h>
 #include "../common/util.h"
+#include "../common/serial.h"
 // Include filter specification for 2 MS/s and 0.22 MS/s sampling rate
 #include "../include/Filter_1MHz.h"
 #include "../include/Filter_5MHz.h"
@@ -146,13 +147,25 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   }
 }
 
+UINT MyThreadProc (LPVOID pParam)
+{
+
+  bool* run = (bool*)pParam;
+
+  printf ("Thread function: %d\n",*run);
+  // do something with 'pObject'
+  *run = true;
+  return 0;   // thread completed successfully
+}
+
 int
 main (int argc, char *argv[], char *envp[])
 {
   int ErrorCode;
   CaptureOptions options;
   Util util;
-
+  bool run = false;
+  AfxBeginThread(MyThreadProc,&run);
   options.parseCmd (argc,argv);
 
   char IPAddress[] = "192.168.0.2";
@@ -162,6 +175,9 @@ main (int argc, char *argv[], char *envp[])
   TSMWMode.AMPS_CH2 = (1ULL << 32) - 1; // all preselector bands
   TSMWMode.Mode = 0;                    // standard mode  (has to be zero)
   unsigned short TSMWID;
+
+  Sleep (1000);
+  printf ("Thread function changed: %d\n",run);
 
   std::cout << "Preselectors: " << TSMWMode.AMPS_CH1 << " " << TSMWMode.AMPS_CH2 << "\n";
 
