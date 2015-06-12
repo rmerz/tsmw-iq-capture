@@ -116,7 +116,7 @@ def decode_stream_trace (f,gain_dB=0,number_of_blocks=None,aggregate=False):
         sample_rate = decoder.decode_float64 (f)
         print (sample_rate)
         scaling = decoder.decode_int16 (f,n=1)  # Scaling
-        print (scaling/100)
+        # Gain control
         scaling = scaling + gain_dB*100
         print (scaling/100)
         real = decoder.decode_float64 (f,n=block_size) # Real
@@ -150,7 +150,7 @@ def main (args):
         real_scaled_1,imag_scaled_1,sample_rate_1 = decode_stream_trace (f,args.gain_dB,args.number_of_blocks,args.aggregate)
 
     # if args.gain_dB is not None:
-    #     gain_lin = np.power (10,args.gain_dB/10)
+    #     gain_lin = np.power (10,args.gain_dB/20)
     #     real_scaled_0 = real_scaled_0*gain_lin
     #     imag_scaled_0 = imag_scaled_0*gain_lin
     #     if len (args.filepath) > 1:
