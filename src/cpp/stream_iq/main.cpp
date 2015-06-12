@@ -35,6 +35,7 @@ public:
                           f1 (1000000000),
                           f2 (0),
                           splitter (0),
+			  trigger (false),
                           block_length (1000000),
 			  filter_id (1)
                           
@@ -120,7 +121,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
       valid = true;
     }
     if (trigger_opt.compare (argv[count]) == 0) {
-      trigger = 1;
+      trigger = true;
       valid = true;
     }
     if (fe1_freq.compare (argv[count]) == 0) {
@@ -164,7 +165,7 @@ UINT triggerStatus (LPVOID pParam)
 
   CSerial serial;
 
-  if (serial.Open (20,19200)) { // COM port hardcoded
+  if (serial.Open (5,19200)) { // COM port hardcoded
     printf("Port opened successfully\n");
     while (TRUE){
       char* ding = new char[500];
@@ -200,7 +201,12 @@ main (int argc, char *argv[], char *envp[])
   CaptureOptions options;
   Util util;
   bool run = false;  // Initial state: not running
-  AfxBeginThread(triggerStatus,&run);
+
+  CSerial serial;
+
+
+  AfxBeginThread (triggerStatus,&run);
+
   options.parseCmd (argc,argv);
 
   char IPAddress[] = "192.168.0.2";
