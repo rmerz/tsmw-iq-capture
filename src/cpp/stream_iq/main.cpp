@@ -36,6 +36,7 @@ public:
                           f2 (0),
                           splitter (0),
                           trigger (false),
+                          port_number (5),
                           block_length (1000000),
 			  filter_id (1)
                           
@@ -51,6 +52,7 @@ public:
   (unsigned __int64) f2;
   unsigned int splitter;
   bool trigger;
+  unsigned int port_number;
   unsigned int filter_id;
 
   (unsigned int) block_length;
@@ -75,6 +77,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   std::string block_length_opt ("--block_length");
   std::string filter_opt ("--filter_id");
   std::string trigger_opt ("--trigger");
+  std::string port_number_opt ("--port_number");
   std::string help ("--help");
   std::string short_help ("-h");
 
@@ -92,6 +95,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
                 << "--block_length\tSize in bits of the measurement blocks (default is 1e6)\n"
                 << "--filter_id [INT]\tFilter identifier (default is 1, available 0, 5, 110)\n"
 		<< "--trigger Waits on the serial-line box to start (and stop) the measurement"
+                << "--port-number Port number to use for serial-line communication (default is 5)"
                 << "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
     }
@@ -122,6 +126,12 @@ CaptureOptions::parseCmd (int argc, char *argv[])
     }
     if (trigger_opt.compare (argv[count]) == 0) {
       trigger = true;
+      valid = true;
+    }
+    if (port_number_opt.compare (argv[count]) == 0) {
+      assert (argc >= count+1);
+      count++;
+      port_number = (unsigned int)atof (argv[count]);
       valid = true;
     }
     if (fe1_freq.compare (argv[count]) == 0) {
@@ -155,18 +165,22 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   }
 }
 
-UINT triggerStatus (LPVOID pParam0,LPVOID pParam1)
+typedef struct triggerParam {
+  bool run;
+  unsigned int port_number;
+} triggerParam;
+
+UINT triggerStatus (LPVOID pParam)
 {
   CSerial serial;
-  bool* run = (bool*)pParam0;
-  unsigned int* port_number = (unsigned int*)pParam1;
+  triggerParam* p = (triggerParam*)pParam;
   int j=0;
 
-  printf ("Running state: %d\n",*run);
-  printf ("Serial port number: %u\n",*port_number);
+  printf ("Running state: %d\n",p->run);
+  printf ("Serial port number: %u\n",p->port_number);
 
-  if (serial.Open (*port_number,19200)) { // COM port hardcoded
-    printf("Port %u opened successfully\n",*port_number);
+  if (serial.Open (p->port_number,19200)) { // COM port hardcoded
+    printf("Port %u opened successfully\n",p->port_number);
     while (TRUE){
       char* ding = new char[500];
       int nBytesRead = serial.ReadData(ding, 500);
@@ -175,10 +189,10 @@ UINT triggerStatus (LPVOID pParam0,LPVOID pParam1)
 
       if (strcmp (ding,start_)==0 || strcmp (ding,stop_)==0) {
         printf ("%d - Mirror detected!\n\n",j);
-        if (*run == false)
-          *run = true;
+        if (p->run == false)
+          p->run = true;
         else
-          *run = false;
+          p->run = false;
         //wait for passing the mirror
         do{
           int nBytesRead = serial.ReadData(ding, 500);
@@ -203,9 +217,11 @@ main (int argc, char *argv[], char *envp[])
 
   options.parseCmd (argc,argv);
 
-  bool run = false;  // Initial state: not running
+  triggerParam p;
+  p.run = false;
+  p.port_number = options.port_number;
   if (options.trigger == true)
-    AfxBeginThread (triggerStatus,&run,0);
+    AfxBeginThread (triggerStatus,&p);
   
   char IPAddress[] = "192.168.0.2";
   TSMW_IQIF_MODE_t TSMWMode;
