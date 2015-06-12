@@ -155,18 +155,18 @@ CaptureOptions::parseCmd (int argc, char *argv[])
   }
 }
 
-UINT triggerStatus (LPVOID pParam)
+UINT triggerStatus (LPVOID pParam0,LPVOID pParam1)
 {
-
-  bool* run = (bool*)pParam;
-  printf ("Running state: %d\n",*run);
-
+  CSerial serial;
+  bool* run = (bool*)pParam0;
+  unsigned int* port_number = (unsigned int*)pParam1;
   int j=0;
 
-  CSerial serial;
+  printf ("Running state: %d\n",*run);
+  printf ("Serial port number: %u\n",*port_number);
 
-  if (serial.Open (5,19200)) { // COM port hardcoded
-    printf("Port opened successfully\n");
+  if (serial.Open (*port_number,19200)) { // COM port hardcoded
+    printf("Port %u opened successfully\n",*port_number);
     while (TRUE){
       char* ding = new char[500];
       int nBytesRead = serial.ReadData(ding, 500);
@@ -205,7 +205,7 @@ main (int argc, char *argv[], char *envp[])
 
   bool run = false;  // Initial state: not running
   if (options.trigger == true)
-    AfxBeginThread (triggerStatus,&run);
+    AfxBeginThread (triggerStatus,&run,0);
   
   char IPAddress[] = "192.168.0.2";
   TSMW_IQIF_MODE_t TSMWMode;
