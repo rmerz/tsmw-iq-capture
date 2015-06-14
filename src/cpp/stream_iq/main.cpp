@@ -184,6 +184,9 @@ UINT triggerStatus (LPVOID pParam)
   
   if (serial.Open (p->port_number,19200)) { // COM port hardcoded
     printf("Port %u opened successfully\n",p->port_number);
+
+    assert (p->run == false);
+
     while (TRUE){
       char* ding = new char[1];
       int nBytesRead = serial.ReadData(ding, 1);
@@ -191,10 +194,15 @@ UINT triggerStatus (LPVOID pParam)
         std::string s=ding;
         char ss=s[0]; // Take first char of ding
         if ((ss=='{') || (ss=='}')){
-          // Do something when mirror is detected [RUBEN: ADD HERE]
-          printf("%d - Mirror detected!\n\n",j);
+          // Do something when mirror is detected
+          printf ("%d - Mirror detected: state change\n",j);
+          // Big fat assumptions: (1) this thread is the only one
+          // _writing_ to p->run; (2) the write is atomic
+          if (p->run == true)
+            p->run = false;
+          else
+            p->run = true;
           j++;
-
 
           // Wait until we exit the mirror
           do {
@@ -229,7 +237,7 @@ main (int argc, char *argv[], char *envp[])
   options.parseCmd (argc,argv);
 
   triggerParam p;
-  p.run = false;
+  p.run = false;  // Initial state
   p.port_number = options.port_number;
   if (options.trigger == true)
     AfxBeginThread (triggerStatus,&p);
