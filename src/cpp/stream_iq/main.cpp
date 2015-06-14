@@ -94,7 +94,7 @@ CaptureOptions::parseCmd (int argc, char *argv[])
                 << "--splitter\tActivate splitter from FE1 to FE2 (default is inactive)\n"
                 << "--block_length\tSize in bits of the measurement blocks (default is 1e6)\n"
                 << "--filter_id [INT]\tFilter identifier (default is 1, available 0, 5, 110)\n"
-		<< "--trigger Waits on the serial-line box to start (and stop) the measurement"
+                << "--trigger Waits on the serial-line box to start (and stop) the measurement"
                 << "--port-number Port number to use for serial-line communication (default is 5)"
                 << "--help|-h\tPrints this help message\n" << std::endl;
       exit (0);
@@ -179,31 +179,42 @@ UINT triggerStatus (LPVOID pParam)
   printf ("Running state: %d\n",p->run);
   printf ("Serial port number: %u\n",p->port_number);
 
+  if (p->port_number > 10)
+    printf ("[WARNING] In case of failure when opening the port, try to set the port number <= 10");
+  
   if (serial.Open (p->port_number,19200)) { // COM port hardcoded
     printf("Port %u opened successfully\n",p->port_number);
     while (TRUE){
-      char* ding = new char[500];
-      int nBytesRead = serial.ReadData(ding, 500);
-      char* start_="{";
-      char* stop_="}";
+      char* ding = new char[1];
+      int nBytesRead = serial.ReadData(ding, 1);
+      if (nBytesRead > 0){
+        std::string s=ding;
+        char ss=s[0]; // Take first char of ding
+        if ((ss=='{') || (ss=='}')){
+          // Do something when mirror is detected [RUBEN: ADD HERE]
+          printf("%d - Mirror detected!\n\n",j);
+          j++;
 
-      if (strcmp (ding,start_)==0 || strcmp (ding,stop_)==0) {
-        printf ("%d - Mirror detected!\n\n",j);
-        if (p->run == false)
-          p->run = true;
-        else
-          p->run = false;
-        //wait for passing the mirror
-        do{
-          int nBytesRead = serial.ReadData(ding, 500);
-        } while (strcmp(ding,start_)==0 || strcmp(ding,stop_)==0);
-        j++;
+
+          // Wait until we exit the mirror
+          do {
+            int nBytesRead = serial.ReadData(ding, 1);
+                  
+            if (nBytesRead > 0){
+              std::string s=ding;
+              ss=s[0];
+            }
+            else{
+              ss='2';
+            }
+          } while ((ss == '2') || (ss=='{') || (ss=='}'));
+        }
       }
       delete []ding;
     }
   }
   else
-    printf ("Failed to open port!\n");
+    printf ("[ERROR] Failed to open port!\n");
 
   return -1;   // thread completed successfully
 }
