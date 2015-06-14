@@ -174,6 +174,7 @@ UINT triggerStatus (LPVOID pParam)
 {
   CSerial serial;
   triggerParam* p = (triggerParam*)pParam;
+  bool running = false; // State (machine)
   int j=0;
 
   printf ("Running state: %d\n",p->run);
@@ -198,10 +199,14 @@ UINT triggerStatus (LPVOID pParam)
           printf ("%d - Mirror detected: state change\n",j);
           // Big fat assumptions: (1) this thread is the only one
           // _writing_ to p->run; (2) the write is atomic
-          if (p->run == true)
+          if (running == true) {
+            running = false;
             p->run = false;
-          else
+          }
+          else {
+            running = true;
             p->run = true;
+          }
           j++;
 
           // Wait until we exit the mirror
