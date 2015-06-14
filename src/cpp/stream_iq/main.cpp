@@ -381,21 +381,21 @@ main (int argc, char *argv[], char *envp[])
       ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_1MHzParam, Filter_1MHzCoeff);
     else
       if (options.filter_id == 5)
-	ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_5MHzParam, Filter_5MHzCoeff);
+        ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_5MHzParam, Filter_5MHzCoeff);
       else
-	if (options.filter_id == 110)
-	  ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
-	else
-	  if (options.filter_id == 500)
-	    ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_500kHzParam, Filter_500kHzCoeff);
-	  else
-	    if (options.filter_id == 501)
-	      ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_500kHzParam, Filter_500kHz_bCoeff);
-	    else
-	      if (options.filter_id != 0) {
-		printf ("Invalid filter id.\n");
-		exit (-1);
-	      }
+        if (options.filter_id == 110)
+          ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_110kHzParam, Filter_110kHzCoeff);
+        else
+          if (options.filter_id == 500)
+            ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_500kHzParam, Filter_500kHzCoeff);
+          else
+            if (options.filter_id == 501)
+              ErrorCode = TSMWIQSetup_c (TSMWID, &Filter_500kHzParam, Filter_500kHz_bCoeff);
+            else
+              if (options.filter_id != 0) {
+                printf ("Invalid filter id.\n");
+                exit (-1);
+              }
 
     if (ErrorCode == 0) {
       std::cout << "Filter set\n";
