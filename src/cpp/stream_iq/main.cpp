@@ -267,7 +267,6 @@ main (int argc, char *argv[], char *envp[])
                                         // both frontends)
   MeasCtrl.Priority = 15;   // Relative priority, Valid range: 0 .. 15, 15 highest
 
-
   TSMW_IQIF_CH_CTRL_t ChannelCtrl1;
   TSMW_IQIF_CH_CTRL_t *pChannelCtrl1 = &ChannelCtrl1;
   ChannelCtrl1.Frequency = options.f1; // Center frequency in Hz
@@ -398,7 +397,14 @@ main (int argc, char *argv[], char *envp[])
               }
 
     if (ErrorCode == 0) {
-      std::cout << "Filter set\n";
+      printf ("Filter set\n");
+
+      if (options.trigger == true) {
+        printf ("Waiting for trigger\n");
+        while (p.run == false)
+          Sleep (1);
+      }
+
       // Start streaming with predefined measurement and streaming
       // parameters Passing a NULL vector for pChannelCtrl1 or
       // pChannelCtrl2 means that frontend 1 or frontend 2,
@@ -470,13 +476,18 @@ main (int argc, char *argv[], char *envp[])
               util.printLastError (ErrorCode);
             }
             CntBlock = CntBlock + 1;
-            if (_kbhit()) {
+            if (_kbhit() || (options.trigger && p.run == false)) {
               std::cout   << "Number of blocks: " << CntBlock << std::endl;
             }
           } while (!_kbhit());
         } else {
-          // Loop as long as no keyboard key is hit
-          while (!_kbhit());
+          // A filename was specified: the K1 API directly saves in
+          // binary format to file. Hence, loop as long as no keyboard
+          // key is hit or no trigger event is raised.
+          while (!_kbhit()) {
+            if (options.trigger && p.run == false)
+              break;
+          };
         }
 
         // Stop streaming
